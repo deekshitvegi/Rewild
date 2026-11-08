@@ -43,6 +43,24 @@ both oblique views from about 400 km. Grade every still against them, line by li
 10. Mountains (Sinai, the Red Sea hills) read as relief in the low sun. Never flat paint.
 11. Clouds (once added): white, crisp, casting shadows in a low sun; never popcorn or cotton balls.
 
+## Earth: where it stands (8 Nov 2026, evening)
+
+Graded against the checklist above. Passing: 1 (black space), 2 (limb white-cyan to blue to black), 3 (haze toward
+the horizon), 4 (sea: deep navy painted from ocean depth; the Red Sea a little light), 5 (desert), 6 (the Nile), 7
+(a broad silver sun glint), 8 (exposure), 9 (the arc), 10 (relief from GEBCO elevation). Not yet: 11, clouds. They
+sit where the cloud map puts them and fray at the edges, but they read grainy and beige, not white and soft.
+
+Open, in order:
+1. Clouds: render stills with Movie Render Queue (many samples per frame); HighResShot captures at a size the
+   viewport has no history for, so the clouds' ray-marching noise never settles. Then judge their shape again.
+2. A thin pale line follows some coasts offshore (Argentina, storm study): the water mask, the depth map and Blue
+   Marble disagree at the shore.
+3. Mask Antarctica and Greenland out of the cloud map (their ice is baked in as cloud).
+4. The night side (dark, the Harrow's grinders glowing) and the terminator, with cloud ground shadows back on.
+
+Rebuild everything: `fetch_earth.py`, `prepare_earth.py`, `make_planet_mesh.py` (Blender), then `build_earth.py` in
+the editor (command line in Scripts/rewild_shots.py). `REWILD_BELOW="lat,lon"` moves the stills elsewhere.
+
 ## Milestones
 
 1. **Earth from orbit.** References: ISS photographs of Earth (day side, terminator, limb). Checklist with numbers,

@@ -81,3 +81,12 @@ on 4 cores made every frame take 7 minutes).
   merging, re-check every hand-placed thing against everything placed since (8 Nov).
 - Reference photographs were unreachable (Wikimedia, iNaturalist, GBIF, Flickr, Unsplash blocked by the network):
   allow upload.wikimedia.org and commons.wikimedia.org for asset jobs, or the reference is film frames and botany.
+- Unreal's Sky Atmosphere at its defaults washed Earth out from 400 km (Red Sea RGB 57, 86, 127 where ISS photographs
+  show about 5-25, 20-40, 50-80; a lavender limb): half the aerial perspective and half the ozone match the photographs.
+  Change one ingredient at a time in A/B renders and measure pixels; it took one run to find (8 Nov, Unreal).
+- Blue Marble's open sea is near black (RGB 2, 5, 20); lifted by haze, its faint steps broke into compression blocks.
+  Paint deep water from ocean depth and keep the map's colour only over shelves (8 Nov, Unreal).
+- From 400 km up, volumetric cloud ground shadows drew long streaks (the shadow map covers 150 km round the camera)
+  and at 2,500 km shadowed everything: off until the terminator work (8 Nov, Unreal).
+- Clouds: a remap of full cover stays full (flat white sheets with stepped pixel edges); Unreal's default of 0
+  multiple-scattering octaves leaves them grey-beige; 2.5 km detail noise at 0.3 read as sandpaper (8 Nov, Unreal).

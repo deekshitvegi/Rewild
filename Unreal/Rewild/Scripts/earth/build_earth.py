@@ -21,6 +21,8 @@ R_EARTH = 637_100_000.0  # cm (6,371 km)
 ALTITUDE = 40_000_000.0  # cm (400 km)
 CENTRE = unreal.Vector(0, 0, -(R_EARTH + ALTITUDE))
 BELOW = (30.0, 25.0)  # latitude, longitude under the fight: Libya and Egypt, the Nile and the Red Sea to the east
+if os.environ.get("REWILD_BELOW"):  # study runs elsewhere, e.g. REWILD_BELOW="-40,-49" (a South Atlantic storm)
+    BELOW = tuple(float(v) for v in os.environ["REWILD_BELOW"].split(","))
 SUN = (35.0, 225.0)  # sun elevation and azimuth (from north, clockwise) at the point below: mid afternoon
 EV100 = 14.5  # exposure of the stills (15 left the desert about 0.7 stop darker than the ISS photographs)
 # Graded against ISS photographs (8 Nov 2026, A/B renders AB_0..AB_4): at Unreal's defaults the haze washed the
@@ -206,8 +208,10 @@ def material(tiles, masks):
 
 
 CLOUD_BOTTOM_KM, CLOUD_HEIGHT_KM = 1.5, 11.0  # cumulus bases to the tops of tropical storms
-CLOUD_NOISE_KM = 14.0  # size of the 3D noise that breaks the map's coverage into cloud shapes
-CLOUD_EXTINCTION = 0.05  # per metre at full density: cumulus is about 0.05-0.1
+CLOUD_NOISE_KM = 12.0  # 3D noise that breaks the map's coverage into cloud masses
+CLOUD_DETAIL_KM = 2.5  # finer noise that eats edges and tops into cauliflower detail
+CLOUD_EXTINCTION = 0.12  # per metre at full density: cumulus is about 0.05-0.15
+CLOUD_MAP_MIP = 1.5  # sample the 4.9 km-per-pixel map one level blurrier: at mip 0 cloud edges showed its pixels
 
 CLOUD_UV_HLSL = """
 float3 d = normalize(P - C);
@@ -217,15 +221,19 @@ float lat = asin(clamp(l.z, -1.0, 1.0));
 return float2(lon / (2.0 * PI) + 0.5, 0.5 - lat / PI);
 """
 
+# v1 made round cotton balls over Greece; v3 made flat white sheets with stepped edges over a South Atlantic storm,
+# because full cover left the noise nothing to cut (a remap of 1 stays 1). v4: the noise always cuts, tops rise and
+# fall with it so the sun picks out domes, and fine detail frays the edges.
 CLOUD_DENSITY_HLSL = """
 float altKm = length(P - C) * 1e-5 - RKm;
 float h = saturate((altKm - BottomKm) / HeightKm);
-float c = saturate(Cover);
-float top = lerp(0.10, 1.0, c * c);                       // thin cover stays low, thick cover towers
-float profile = saturate(h / 0.03) * saturate((top - h) / max(0.25 * top, 1e-3));
-float body = saturate(c * 1.3 - 0.08) * profile;
-float erode = (1.0 - Noise) * 0.6;                         // noise eats the edges into cloud shapes
-return saturate((body - erode) / max(1.0 - erode, 1e-3));
+float c = saturate((Cover - 0.12) / 0.88);
+float top = lerp(0.08, 0.95, c * c * c) * (0.55 + 0.45 * Noise);
+float profile = saturate(h / 0.04) * saturate((top - h) / max(0.35 * top, 1e-3));
+float base = saturate(c * 1.6 - 0.2);
+float d = saturate(base * profile * 1.3 - (1.0 - Noise) * 0.8);
+d = saturate(d - (1.0 - Detail) * 0.12 * (1.0 - d));
+return d;
 """
 
 
@@ -249,6 +257,17 @@ def vec3(mat, v, x, y):
     return n
 
 
+def vec3_param(mat, name, x, y):
+    """A vector parameter cut to float3 (Custom nodes take float3)."""
+    p = mel.create_material_expression(mat, unreal.MaterialExpressionVectorParameter, x, y)
+    p.set_editor_property("parameter_name", name)
+    m = mel.create_material_expression(mat, unreal.MaterialExpressionComponentMask, x + 200, y)
+    for ch in ("r", "g", "b"):
+        m.set_editor_property(ch, True)
+    mel.connect_material_expressions(p, "", m, "")
+    return m
+
+
 def scalar(mat, value, x, y):
     n = mel.create_material_expression(mat, unreal.MaterialExpressionConstant, x, y)
     n.set_editor_property("r", value)
@@ -257,23 +276,37 @@ def scalar(mat, value, x, y):
 
 def explicit_mip(sample, level=0.0):
     """Cloud shaders march through the volume in compute passes, which have no screen derivatives: a texture
-    sample there must name its mip level, as Unreal's own cloud material does. Left on the default (derivative)
-    mode, the cloud passes fail to build and the renderer asserts (crashed three times on 8 Nov 2026)."""
+    sample there must name its mip level, as Unreal's own cloud material does."""
     sample.set_editor_property("mip_value_mode", unreal.TextureMipValueMode.TMVM_MIP_LEVEL)
     sample.set_editor_property("const_mip_value", level)
+
+
+def noise_sample(mat, wp, tex, km, x, y):
+    uvw = mel.create_material_expression(mat, unreal.MaterialExpressionMultiply, x - 250, y)
+    uvw.set_editor_property("const_b", 1e-5 / km)  # cm to noise tiles
+    mel.connect_material_expressions(wp, "", uvw, "A")
+    n = mel.create_material_expression(mat, unreal.MaterialExpressionTextureSample, x, y)
+    n.set_editor_property("texture", tex)
+    n.set_editor_property(
+        "sampler_type",
+        unreal.MaterialSamplerType.SAMPLERTYPE_COLOR if tex.get_editor_property("srgb")
+        else unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR,
+    )
+    explicit_mip(n)
+    mel.connect_material_expressions(uvw, "", n, "UVs")
+    return n
 
 
 def cloud_material(cover_tex):
     """Volumetric clouds: the cloud map says where, coverage says how tall, 3D noise shapes the edges.
 
-    Rebuilt only when its recipe changes (a fingerprint is kept on the asset). A Volumetric Cloud drawing a
-    material whose shaders are still compiling asserts in the renderer (crashed on 8 Nov 2026 until the usage flag below was set);
-    a reused material comes ready-compiled from the shader cache."""
+    Earth's centre and axes are parameters (MI_EarthClouds sets them), so moving or turning Earth needs no
+    recompile. The material is rebuilt only when its recipe changes (a fingerprint is kept on the asset)."""
     import hashlib
 
     path = f"{DEST}/M_EarthClouds"
     recipe = repr((CLOUD_UV_HLSL, CLOUD_DENSITY_HLSL, CLOUD_BOTTOM_KM, CLOUD_HEIGHT_KM, CLOUD_NOISE_KM,
-                   CLOUD_EXTINCTION, BELOW, R_EARTH, ALTITUDE, "v2"))
+                   CLOUD_DETAIL_KM, CLOUD_EXTINCTION, CLOUD_MAP_MIP, R_EARTH, "v6"))
     fingerprint = hashlib.sha1(recipe.encode()).hexdigest()
     if assets.does_asset_exist(path):
         old = unreal.load_asset(path)
@@ -290,11 +323,9 @@ def cloud_material(cover_tex):
     # the renderer asserted (crashed five times on 8 Nov 2026, before the cause was found in the engine source).
     mat.set_editor_property("used_with_volumetric_cloud", True)
 
-    rot = frame_at(*BELOW)
-    wp = mel.create_material_expression(mat, unreal.MaterialExpressionWorldPosition, -1400, 0)
-    centre = vec3(mat, CENTRE, -1400, 100)
-    axes = [vec3(mat, v, -1400, 200 + 80 * i)
-            for i, v in enumerate((rot.get_forward_vector(), rot.get_right_vector(), rot.get_up_vector()))]
+    wp = mel.create_material_expression(mat, unreal.MaterialExpressionWorldPosition, -1600, 0)
+    centre = vec3_param(mat, "PlanetCentre", -1600, 100)
+    axes = [vec3_param(mat, n, -1600, 200 + 90 * i) for i, n in enumerate(("PlanetX", "PlanetY", "PlanetZ"))]
 
     uv = custom(mat, CLOUD_UV_HLSL, ["P", "C", "AX", "AY", "AZ"], unreal.CustomMaterialOutputType.CMOT_FLOAT2,
                 -1100, 100, "Cloud map UV")
@@ -303,29 +334,19 @@ def cloud_material(cover_tex):
     cover = mel.create_material_expression(mat, unreal.MaterialExpressionTextureSample, -850, 100)
     cover.set_editor_property("texture", cover_tex)
     cover.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_GRAYSCALE)
-    explicit_mip(cover)
+    explicit_mip(cover, CLOUD_MAP_MIP)
     mel.connect_material_expressions(uv, "", cover, "UVs")
 
     noise_tex = unreal.load_asset("/Engine/EngineSky/VolumetricClouds/VT_PerlinWorley_Balanced")
-    noise_uvw = mel.create_material_expression(mat, unreal.MaterialExpressionMultiply, -1100, 400)
-    noise_uvw.set_editor_property("const_b", 1e-5 / CLOUD_NOISE_KM)  # cm to noise tiles
-    mel.connect_material_expressions(wp, "", noise_uvw, "A")
-    noise = mel.create_material_expression(mat, unreal.MaterialExpressionTextureSample, -850, 400)
-    noise.set_editor_property("texture", noise_tex)
-    noise.set_editor_property(
-        "sampler_type",
-        unreal.MaterialSamplerType.SAMPLERTYPE_COLOR if noise_tex.get_editor_property("srgb")
-        else unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR,
-    )
-    explicit_mip(noise)
-    mel.connect_material_expressions(noise_uvw, "", noise, "UVs")
+    shape = noise_sample(mat, wp, noise_tex, CLOUD_NOISE_KM, -850, 400)
+    detail = noise_sample(mat, wp, noise_tex, CLOUD_DETAIL_KM, -850, 650)
 
-    names = ["P", "C", "Cover", "Noise", "RKm", "BottomKm", "HeightKm"]
+    names = ["P", "C", "Cover", "Noise", "Detail", "RKm", "BottomKm", "HeightKm"]
     dens = custom(mat, CLOUD_DENSITY_HLSL, names, unreal.CustomMaterialOutputType.CMOT_FLOAT1, -550, 200,
                   "Cloud density")
-    srcs = [(wp, ""), (centre, ""), (cover, "R"), (noise, "R"),
-            (scalar(mat, R_EARTH / 100_000.0, -750, 500), ""), (scalar(mat, CLOUD_BOTTOM_KM, -750, 560), ""),
-            (scalar(mat, CLOUD_HEIGHT_KM, -750, 620), "")]
+    srcs = [(wp, ""), (centre, ""), (cover, "R"), (shape, "R"), (detail, "G"),
+            (scalar(mat, R_EARTH / 100_000.0, -750, 800), ""), (scalar(mat, CLOUD_BOTTOM_KM, -750, 860), ""),
+            (scalar(mat, CLOUD_HEIGHT_KM, -750, 920), "")]
     for name, (node, pin) in zip(names, srcs):
         mel.connect_material_expressions(node, pin, dens, name)
 
@@ -336,10 +357,42 @@ def cloud_material(cover_tex):
     white = vec3(mat, unreal.Vector(1.0, 1.0, 1.0), -300, 0)
     mel.connect_material_property(white, "", unreal.MaterialProperty.MP_BASE_COLOR)  # albedo
 
+    # Light bouncing around inside a cloud is what makes it the brightest white in an orbital photograph. Unreal
+    # leaves it off (0 octaves) and the clouds came out grey-beige (storm study, 8 Nov 2026). Two octaves, as Unreal
+    # recommends for clouds, and a forward-scattering phase for the silver lining toward the sun.
+    adv = mel.create_material_expression(mat, unreal.MaterialExpressionVolumetricAdvancedMaterialOutput, 0, 400)
+    for k, v in {
+        "multi_scattering_approximation_octave_count": 2,
+        "const_multi_scattering_contribution": 0.5,
+        "const_multi_scattering_occlusion": 0.5,
+        "const_multi_scattering_eccentricity": 0.6,
+        "const_phase_g": 0.6,
+        "const_phase_g2": -0.3,
+        "const_phase_blend": 0.5,
+        "gray_scale_material": True,
+    }.items():
+        adv.set_editor_property(k, v)
+
     mel.recompile_material(mat)
     assets.set_metadata_tag(mat, "rewild_recipe", fingerprint)
     assets.save_loaded_asset(mat)
     return mat
+
+
+def cloud_instance(mat, rot):
+    """MI_EarthClouds: the cloud material placed on this level's Earth (centre and axes)."""
+    path = f"{DEST}/MI_EarthClouds"
+    if assets.does_asset_exist(path):
+        assets.delete_asset(path)
+    mi = tools.create_asset("MI_EarthClouds", DEST, unreal.MaterialInstanceConstant,
+                            unreal.MaterialInstanceConstantFactoryNew())
+    mel.set_material_instance_parent(mi, mat)
+    for name, v in (("PlanetCentre", CENTRE), ("PlanetX", rot.get_forward_vector()),
+                    ("PlanetY", rot.get_right_vector()), ("PlanetZ", rot.get_up_vector())):
+        mel.set_material_instance_vector_parameter_value(mi, name, unreal.LinearColor(v.x, v.y, v.z, 0.0))
+    mel.update_material_instance(mi)
+    assets.save_loaded_asset(mi)
+    return mi
 
 
 def planet_mesh(instances):
@@ -407,7 +460,8 @@ def set_cloud(cc, cloud_mat):
         "layer_bottom_altitude": CLOUD_BOTTOM_KM,
         "layer_height": CLOUD_HEIGHT_KM,
         "tracing_start_max_distance": 1500.0,  # km: start tracing from 400 km up, out to the horizon
-        "tracing_max_distance": 400.0,  # km through the layer: grazing views near the limb are long
+        "tracing_max_distance": 2000.0,  # km through the layer: at 400 km the far cloud band ended in a straight cut
+        "view_sample_count_scale": 2.0,  # stills: fewer marching artefacts
     }.items():
         cc.set_editor_property(k, v)
 
@@ -438,8 +492,11 @@ def build_level(mesh, radius, cloud_mat):
     lc.set_editor_property("intensity", 120_000.0)  # lux: sunlight above the atmosphere
     lc.set_editor_property("atmosphere_sun_light", True)
     lc.set_editor_property("light_source_angle", 0.5357)  # the Sun's real angular diameter
-    lc.set_editor_property("cast_cloud_shadows", True)
-    lc.set_editor_property("cloud_shadow_on_surface_strength", 1.0)
+    # Cloud shadows on the ground are off for now. The cloud shadow map covers a radius around the camera (150 km by
+    # default); from 400 km up all the ground in view lies beyond it, and its stretched edge drew long dark streaks
+    # across the ocean. Widened to 2,500 km it shadowed everything, ground and clouds (storm study, 8 Nov 2026).
+    # Clouds still shade themselves. Revisit for low sun and the terminator, where ground shadows show from orbit.
+    lc.set_editor_property("cast_cloud_shadows", False)
 
     if cloud_mat and not os.environ.get("REWILD_NO_CLOUDS"):  # REWILD_NO_CLOUDS: material only, for diagnosis
         clouds = spawn(unreal.VolumetricCloud, label="Clouds")
@@ -510,7 +567,7 @@ shots.start()
 try:
     tile_textures, mask_textures = textures()
     mesh, radius = planet_mesh(material(tile_textures, mask_textures))
-    clouds_mat = cloud_material(mask_textures["Clouds"])
+    clouds_mat = cloud_instance(cloud_material(mask_textures["Clouds"]), frame_at(*BELOW))
     # A Volumetric Cloud given a material whose shaders are still compiling draws the default surface material
     # and the renderer asserts (crashed 8 Nov 2026): finish every compile before the cloud exists.
     unreal.AutomationLibrary.finish_loading_before_screenshot()
