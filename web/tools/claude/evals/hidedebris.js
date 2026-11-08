@@ -1,0 +1,1 @@
+(() => { const t = window.__three; let n = 0; t.scene.traverse((o) => { if (o.isInstancedMesh && o.count === 220) { o.parent.visible = false; o.parent.userData.testHidden = true; n++; } }); return n; })()

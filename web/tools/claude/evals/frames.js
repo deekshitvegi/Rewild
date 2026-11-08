@@ -1,0 +1,1 @@
+(() => { if (window.__f === undefined) { window.__f = 0; const loop = () => { window.__f++; requestAnimationFrame(loop); }; requestAnimationFrame(loop); } window.__f0 = window.__f; return window.__f; })()

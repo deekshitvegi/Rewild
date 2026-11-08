@@ -1,0 +1,656 @@
+/* ---- The game's interface, Liquid Glass (October 2026) -----------------------------------------
+   One material and one type scale for every piece of the HUD: dark frosted glass that keeps text
+   readable over a bright sky or snow, a light rim along the top, soft depth, capsule controls,
+   Inter in sentence case. Loaded after expedition.css; the selectors carry the .expedition root so
+   they win over the older rules (and the older phone rules) wherever both apply. */
+
+.expedition {
+  --g-fill: rgba(18, 20, 26, 0.52);
+  --g-fill-strong: rgba(16, 18, 24, 0.78);
+  --g-edge: rgba(255, 255, 255, 0.14);
+  --g-rim: rgba(255, 255, 255, 0.32);
+  --g-shadow: 0 12px 32px rgba(0, 0, 0, 0.26), 0 1px 3px rgba(0, 0, 0, 0.22);
+  --g-blur: blur(22px) saturate(1.7);
+  --t1: rgba(255, 255, 255, 0.96);
+  --t2: rgba(234, 240, 250, 0.76);
+  --t3: rgba(222, 230, 242, 0.48);
+  --gold: #ffd36a;
+  --amber: #ffb84d;
+  --red: #ff6a5c;
+  --cyan: #7fe3ff;
+  --hover: rgba(255, 255, 255, 0.12);
+  --pressed: rgba(255, 255, 255, 0.2);
+  letter-spacing: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* The material. */
+.expedition .expedition-hud__left,
+.expedition .expedition-hud__tools,
+.expedition .expedition-hud__leave,
+.expedition .expedition-hud__status,
+.expedition .expedition-hud__prompts > span,
+.expedition .expedition-hud__notice,
+.expedition .expedition-hud__help,
+.expedition .expedition-discovery,
+.expedition .expedition-hud__fauna,
+.expedition .expedition-radio,
+.expedition .expedition-fishing {
+  border: 1px solid var(--g-edge);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0) 42%),
+    var(--g-fill);
+  box-shadow: var(--g-shadow), inset 0 1px 0 var(--g-rim);
+  -webkit-backdrop-filter: var(--g-blur);
+  backdrop-filter: var(--g-blur);
+  color: var(--t1);
+  text-shadow: none;
+}
+
+/* ---- Top left: one card, the log and the chapter in it ---- */
+.expedition .expedition-hud__left {
+  gap: 0;
+  width: min(312px, calc(100vw - 32px));
+  overflow: hidden;
+  border-radius: 22px;
+}
+
+.expedition .expedition-hud__left > * {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.expedition .expedition-hud__left > * + * {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.expedition .expedition-hud__objective,
+.expedition .expedition-story,
+.expedition .expedition-vault {
+  padding: 12px 15px 13px;
+}
+
+.expedition .expedition-hud__objective small,
+.expedition .expedition-story small,
+.expedition .expedition-vault small {
+  display: block;
+  color: var(--t2);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.expedition .expedition-story small { color: var(--gold); }
+
+.expedition .expedition-hud__objective strong,
+.expedition .expedition-story strong {
+  display: block;
+  margin-top: 3px;
+  color: var(--t1);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.25;
+}
+
+.expedition .expedition-hud__objective p,
+.expedition .expedition-vault p {
+  margin: 4px 0 0;
+  color: var(--t2);
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+.expedition .expedition-story { gap: 6px; }
+
+.expedition .expedition-story ul { gap: 5px; }
+
+.expedition .expedition-story li {
+  grid-template-columns: 12px minmax(0, 1fr);
+  gap: 9px;
+  color: var(--t1);
+  font-size: 0.75rem;
+  line-height: 1.38;
+}
+
+.expedition .expedition-story li i {
+  width: 11px;
+  height: 11px;
+  border: 1.5px solid color-mix(in srgb, var(--gold) 85%, transparent);
+  border-radius: 999px;
+}
+
+.expedition .expedition-story__bonus {
+  color: color-mix(in srgb, var(--gold) 82%, white);
+  font-size: 0.75rem;
+}
+
+.expedition .expedition-story button {
+  min-height: 28px;
+  margin-top: 4px;
+  padding: 0 6px 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--t1);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.expedition .expedition-story button:hover { background: var(--hover); }
+
+/* A warning from the ship's computer: the whole card turns amber. */
+.expedition .expedition-hud__left:has(.expedition-hud__objective.is-alert) {
+  border-color: rgba(255, 196, 110, 0.45);
+  background:
+    linear-gradient(180deg, rgba(255, 200, 120, 0.12), rgba(255, 190, 90, 0) 50%),
+    rgba(34, 24, 12, 0.56);
+}
+
+.expedition .expedition-hud__objective.is-alert small { color: var(--amber); }
+
+/* ---- Top right: the tools in one capsule, and the way out ---- */
+.expedition .expedition-hud__actions {
+  align-items: center;
+  gap: 8px;
+}
+
+.expedition .expedition-hud__tools {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 999px;
+}
+
+.expedition .expedition-hud__tools button,
+.expedition .expedition-hud__leave {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-width: 38px;
+  min-height: 38px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: none;
+  color: var(--t1);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.expedition .expedition-hud__tools button.has-label { padding: 0 12px 0 9px; }
+
+.expedition .expedition-hud__tools button:hover,
+.expedition .expedition-hud__tools button:focus-visible { background: var(--hover); outline: none; }
+
+.expedition .expedition-hud__tools button[aria-pressed="true"] { background: var(--pressed); }
+
+.expedition .expedition-hud__tools button.is-muted { color: var(--t3); }
+
+.expedition .expedition-hud__leave {
+  padding: 0 14px 0 11px;
+  border: 1px solid var(--g-edge);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0) 42%),
+    var(--g-fill);
+  box-shadow: var(--g-shadow), inset 0 1px 0 var(--g-rim);
+  -webkit-backdrop-filter: var(--g-blur);
+  backdrop-filter: var(--g-blur);
+}
+
+.expedition .expedition-hud__leave:hover,
+.expedition .expedition-hud__leave:focus-visible {
+  border-color: rgba(255, 140, 120, 0.5);
+  background: rgba(70, 22, 18, 0.6);
+  outline: none;
+}
+
+.expedition .expedition-icon {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.65;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* The tool's name and key, under it while the pointer is on it. */
+.expedition .expedition-hud__tools button[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 50%;
+  padding: 5px 10px;
+  border: 1px solid var(--g-edge);
+  border-radius: 999px;
+  background: var(--g-fill-strong);
+  color: var(--t1);
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -3px);
+  transition: opacity 0.14s ease, transform 0.14s ease;
+}
+
+.expedition .expedition-hud__tools button[data-tip]:hover::after {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+/* ---- Bottom left: where you are, how fast, what holds ---- */
+.expedition .expedition-hud__status {
+  min-width: 212px;
+  max-width: min(300px, calc(100vw - 32px));
+  padding: 12px 16px 13px;
+  border-radius: 22px;
+}
+
+.expedition .expedition-hud__status small {
+  color: var(--t2);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.expedition .expedition-hud__status strong {
+  margin-top: 1px;
+  color: var(--t1);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.expedition .expedition-hud__speed {
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.expedition .expedition-hud__speed b {
+  font-size: 1.75rem;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.expedition .expedition-hud__speed span {
+  color: var(--t2);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.expedition .expedition-hud__status p {
+  margin: 5px 0 0;
+  color: var(--t2);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.35;
+  text-shadow: none;
+}
+
+.expedition .expedition-hud__status p.is-hot { color: var(--amber); }
+.expedition .expedition-hud__status p.is-failing { color: var(--red); }
+
+.expedition .expedition-hud__bars {
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.expedition .expedition-hud__bars label {
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 10px;
+  color: var(--t2);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.expedition .expedition-hud__bars i {
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.expedition .expedition-hud__bars i::after { border-radius: 999px; }
+
+/* ---- Bottom right: what has been found and what is carried (phones keep their one-row strip) ---- */
+@media (min-width: 601px) and (min-height: 501px) {
+  .expedition .expedition-hud__cargo {
+    display: grid;
+    grid-template-columns: auto auto;
+    justify-items: stretch;
+    column-gap: 8px;
+    row-gap: 3px;
+    padding: 11px 15px 12px;
+    border: 1px solid var(--g-edge);
+    border-radius: 20px;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0) 42%),
+      var(--g-fill);
+    box-shadow: var(--g-shadow), inset 0 1px 0 var(--g-rim);
+    -webkit-backdrop-filter: var(--g-blur);
+    backdrop-filter: var(--g-blur);
+    text-shadow: none;
+  }
+
+  .expedition .expedition-hud__cargo div { display: contents; }
+
+  .expedition .expedition-hud__cargo b {
+    justify-self: end;
+    color: var(--t1);
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  .expedition .expedition-hud__cargo small {
+    align-self: center;
+    color: var(--t2);
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+
+  .expedition .expedition-hud__cargo .expedition-hud__crystal,
+  .expedition .expedition-hud__cargo .expedition-hud__food { display: none; }
+}
+
+/* ---- What can be done here, and short notices ---- */
+.expedition .expedition-hud__prompts { gap: 8px; }
+
+.expedition .expedition-hud__prompts > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 15px 0 7px;
+  border-radius: 999px;
+  color: var(--t1);
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.expedition .expedition-hud__prompts > span:not(:has(kbd)) { padding-left: 15px; }
+
+.expedition .expedition-hud kbd {
+  display: inline-grid;
+  place-items: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 7px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  color: var(--t1);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.expedition .expedition-hud__notice {
+  padding: 9px 18px;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+/* ---- Cards that come and go: a discovery, an animal, the radio, the controls ---- */
+.expedition .expedition-discovery {
+  padding: 16px 20px 18px;
+  border-radius: 24px;
+  /* Over the panels it may reach down to (it is there only a few seconds). */
+  z-index: 4;
+}
+
+.expedition .expedition-discovery small {
+  color: var(--gold);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.expedition .expedition-discovery strong {
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.expedition .expedition-discovery p {
+  color: var(--t2);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.expedition .expedition-hud__fauna,
+.expedition .expedition-radio,
+.expedition .expedition-fishing {
+  border-radius: 20px;
+}
+
+.expedition .expedition-hud__help {
+  /* Clear of the counters card under it. */
+  bottom: max(146px, calc(env(safe-area-inset-bottom) + 128px));
+  padding: 14px 16px;
+  border-radius: 22px;
+}
+
+.expedition .expedition-hud__help strong {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.expedition .expedition-hud__help dt {
+  color: var(--t1);
+  font-weight: 600;
+}
+
+.expedition .expedition-hud__help dd { color: var(--t2); }
+
+/* ---- Markers on things in the view ---- */
+.expedition .expedition-hud__marker,
+.expedition .expedition-hud__site {
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7), 0 0 10px rgba(0, 0, 0, 0.45);
+}
+
+.expedition .expedition-hud__marker em,
+.expedition .expedition-hud__site em {
+  color: var(--t2);
+  font-style: normal;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Phones ---- */
+@media (pointer: coarse) {
+  .expedition .expedition-hud__tools button { min-width: 34px; min-height: 34px; }
+  .expedition .expedition-icon { width: 18px; height: 18px; }
+  .expedition .expedition-hud__leave span { display: none; }
+  .expedition .expedition-hud__leave { min-width: 36px; min-height: 36px; padding: 0; }
+}
+
+@media (max-height: 500px) and (orientation: landscape) {
+  .expedition .expedition-hud__left { width: min(250px, 34vw); border-radius: 18px; }
+  .expedition .expedition-hud__objective,
+  .expedition .expedition-story,
+  .expedition .expedition-vault { padding: 8px 12px 9px; }
+  .expedition .expedition-story { gap: 4px; }
+  .expedition .expedition-hud__objective strong,
+  .expedition .expedition-story strong { margin-top: 1px; font-size: 0.8125rem; }
+  .expedition .expedition-story li { font-size: 0.75rem; }
+  .expedition .expedition-story button { min-height: 24px; margin-top: 2px; font-size: 0.75rem; }
+  .expedition .expedition-story button kbd { min-width: 20px; height: 20px; }
+  .expedition .expedition-hud__tools { padding: 3px; }
+  .expedition .expedition-hud__tools button { min-width: 30px; min-height: 30px; }
+  .expedition .expedition-icon { width: 16px; height: 16px; }
+  /* Small enough to sit between the chapter card and the stick. */
+  .expedition .expedition-hud__status { min-width: 136px; padding: 7px 11px 8px; border-radius: 16px; }
+  .expedition .expedition-hud__status strong { font-size: 0.8125rem; }
+  .expedition .expedition-hud__speed { margin-top: 2px; }
+  .expedition .expedition-hud__speed b { font-size: 1.25rem; }
+  .expedition .expedition-hud__speed span { font-size: 0.75rem; }
+  .expedition .expedition-hud__status p { margin-top: 2px; font-size: 0.75rem; }
+  .expedition .expedition-hud__bars { gap: 3px; margin-top: 5px; }
+  .expedition .expedition-hud__bars label { grid-template-columns: 38px 70px; gap: 6px; font-size: 0.75rem; }
+  .expedition .expedition-hud__bars i { height: 4px; }
+  .expedition .expedition-hud__prompts > span { min-height: 30px; font-size: 0.75rem; }
+}
+
+@media (max-width: 600px) and (orientation: portrait) {
+  .expedition .expedition-hud__tools { padding: 3px; }
+  .expedition .expedition-hud__tools button { min-width: 32px; min-height: 32px; }
+  .expedition .expedition-hud__status { min-width: 150px; padding: 9px 12px 10px; border-radius: 18px; }
+  .expedition .expedition-hud__status strong { font-size: 0.875rem; }
+  .expedition .expedition-hud__speed b { font-size: 1.5rem; }
+  .expedition .expedition-hud__bars label { grid-template-columns: 42px 84px; gap: 8px; font-size: 0.75rem; }
+  .expedition .expedition-hud__objective,
+  .expedition .expedition-story,
+  .expedition .expedition-vault { padding: 10px 13px 11px; }
+}
+
+/* ---- The expedition under way: first in the card ---- */
+.expedition .expedition-hud__expedition { padding: 12px 15px 13px; }
+
+.expedition .expedition-hud__expedition small {
+  display: block;
+  color: var(--cyan);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.expedition .expedition-hud__expedition strong {
+  display: block;
+  margin-top: 3px;
+  color: var(--t1);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.expedition .expedition-hud__expedition p {
+  margin: 4px 0 0;
+  color: var(--t2);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- ARGO, the ship's computer: subtitles above the prompts ---- */
+.expedition .expedition-argo {
+  position: absolute;
+  left: 50%;
+  bottom: calc(max(18px, env(safe-area-inset-bottom)) + 56px);
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  max-width: min(640px, calc(100vw - 32px));
+  padding: 10px 18px 11px 14px;
+  border: 1px solid var(--g-edge);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0) 42%),
+    var(--g-fill-strong);
+  box-shadow: var(--g-shadow), inset 0 1px 0 var(--g-rim);
+  -webkit-backdrop-filter: var(--g-blur);
+  backdrop-filter: var(--g-blur);
+  color: var(--t1);
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.45;
+  text-shadow: none;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.expedition .expedition-argo b {
+  flex: none;
+  color: var(--cyan);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.expedition .expedition-argo.is-warn { border-color: rgba(255, 196, 110, 0.45); }
+.expedition .expedition-argo.is-warn b { color: var(--amber); }
+.expedition .expedition-argo.is-danger { border-color: rgba(255, 120, 100, 0.55); background: linear-gradient(180deg, rgba(255, 130, 110, 0.12), rgba(255, 255, 255, 0) 50%), rgba(40, 14, 12, 0.78); }
+.expedition .expedition-argo.is-danger b { color: var(--red); }
+
+/* A discovery card on the right: the subtitle keeps to the space between it and the status card. */
+@media (min-width: 601px) and (max-width: 1300px) and (min-height: 501px) {
+  .expedition .expedition-hud.has-card .expedition-argo {
+    left: 284px;
+    right: min(372px, 40vw);
+    max-width: none;
+    transform: none;
+  }
+}
+
+@media (max-height: 500px) and (orientation: landscape) {
+  .expedition .expedition-argo {
+    top: max(56px, calc(env(safe-area-inset-top) + 48px));
+    bottom: auto;
+    max-width: min(420px, 50vw);
+    padding: 6px 12px 7px 10px;
+    font-size: 0.75rem;
+  }
+  .expedition .expedition-hud__expedition { padding: 8px 12px 9px; }
+  .expedition .expedition-hud__expedition strong { font-size: 0.75rem; }
+  .expedition .expedition-hud__expedition p { font-size: 0.75rem; }
+}
+
+@media (max-width: 600px) and (orientation: portrait) {
+  .expedition .expedition-argo {
+    bottom: auto;
+    top: max(250px, calc(env(safe-area-inset-top) + 240px));
+    font-size: 0.75rem;
+  }
+}
+
+/* ---- The log's expeditions: medal discs keep their own look, the button sits under the tiers ---- */
+.expedition .expedition-chapters li li i.expedition-medal,
+.expedition .expedition-chapters__list > li.is-done li i.expedition-medal {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+}
+
+.expedition .expedition-chapters li li i.expedition-medal:not(.is-bronze):not(.is-silver):not(.is-gold) { background: rgba(255, 255, 255, 0.06); }
+
+.expedition .expedition-chapters__list li li.is-met:has(.expedition-medal) {
+  color: var(--t1);
+  text-decoration: none;
+}
+
+.expedition .expedition-chapters__list li li:has(.expedition-medal):not(.is-met) .expedition-medal { opacity: 0.35; }
+
+.expedition .expedition-chapters__actions {
+  display: flex;
+  margin-top: 10px;
+}
+
+.expedition .expedition-chapters__actions button:disabled { opacity: 0.4; cursor: default; }
+
+/* The log's "What they told us": a heading between the chapters and the first words. */
+.expedition .expedition-words__title {
+    margin: 22px 2px 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--t1, rgba(255, 255, 255, 0.94));
+}
+.expedition .expedition-chapters__list .expedition-log__inscription {
+    margin: 8px 0 2px;
+    line-height: 1.7;
+    letter-spacing: 0.06em;
+}

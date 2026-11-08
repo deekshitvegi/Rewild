@@ -1,0 +1,178 @@
+/* The page around the game: the veil, the warp and the loading card (from the website's index.css). */
+html, body, #root { margin: 0; height: 100%; background: #000; color: #edf3ff; overflow: hidden; font-family: 'Inter Variable', Inter, system-ui, sans-serif; }
+
+.experience-card--expedition .experience-card__glow {
+  background: radial-gradient(circle at 70% 0%, rgba(255, 196, 120, 0.2), transparent 62%);
+}
+
+/* Shown while the Expedition downloads, or if it cannot start. */
+.expedition-boot {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-content: center;
+  gap: 16px;
+  padding: 24px;
+  color: rgba(241, 245, 249, 0.86);
+  background: radial-gradient(circle at 50% 40%, #1b1633, #04050a 70%);
+  font: 600 0.8rem/1.5 system-ui, sans-serif;
+  letter-spacing: 0.18em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.expedition-boot p {
+  margin: 0;
+}
+
+.expedition-boot button {
+  justify-self: center;
+  padding: 0.7rem 1.2rem;
+  border: 1px solid rgba(226, 232, 240, 0.3);
+  border-radius: 999px;
+  color: inherit;
+  background: rgba(255, 255, 255, 0.06);
+  font: inherit;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+}
+
+/* The jump into the Expedition: star streaks over the galaxy, then a black
+   veil that lifts once the Expedition's first frames are on screen. */
+.expedition-warp {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.expedition-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.9s ease;
+}
+
+.expedition-veil[data-phase="warp"] {
+  transition: none;
+}
+
+.expedition-veil[data-phase="loading"] {
+  opacity: 1;
+  transition: none;
+}
+
+.expedition-veil[data-phase="on"] {
+  opacity: 0;
+  transition: opacity 1.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.expedition-veil[data-phase="leaving"] {
+  opacity: 1;
+  transition: opacity 0.5s ease;
+}
+
+/* While the expedition loads: a glass card over the black veil, with how much
+   has arrived and a tip for the first steps. */
+.expedition-loading-card {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  z-index: 1310;
+  width: min(420px, calc(100vw - 32px));
+  transform: translate(-50%, -50%);
+  padding: 26px 28px 24px;
+  display: grid;
+  gap: 10px;
+  color: rgba(237, 243, 255, 0.92);
+  font-family: var(--font-ui);
+  /* Only a slide, never a fade in: while the world is being built the page
+     may draw a frame every few seconds, and an opacity animation caught at its
+     first frame would hide the card. (backwards, not both: a held end state
+     would override the fade-out.) */
+  animation: expedition-loading-in 0.5s ease backwards;
+  transition: opacity 0.7s ease;
+}
+
+.expedition-loading-card[data-ready="true"] {
+  opacity: 0;
+}
+
+.expedition-loading-card__title {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.expedition-loading-card__detail {
+  margin: 0;
+  font-size: 14px;
+  color: rgba(237, 243, 255, 0.62);
+}
+
+.expedition-loading-card__bar {
+  position: relative;
+  height: 4px;
+  margin-top: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+.expedition-loading-card__bar span {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: rgba(255, 255, 255, 0.86);
+  transform-origin: left center;
+  /* No transition: while the world is being built a frame may come only
+     every few seconds, and the bar would show where it started, not how far
+     the loading has got. */
+}
+
+.expedition-loading-card__count {
+  margin: 0;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: rgba(237, 243, 255, 0.66);
+}
+
+.expedition-loading-card__tip {
+  min-height: 2.9em;
+  margin: 6px 0 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: rgba(237, 243, 255, 0.8);
+}
+
+@keyframes expedition-loading-in {
+  from { transform: translate(-50%, -48%); }
+  to { transform: translate(-50%, -50%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .expedition-loading-card { animation: none; }
+}
+
+/* The start screen. */
+.rewild-start {
+  position: fixed; inset: 0; display: grid; place-content: center; justify-items: center; gap: 14px;
+  background: radial-gradient(120% 90% at 50% 110%, #1b1408 0%, #050608 55%, #000 100%);
+  text-align: center;
+}
+.rewild-start h1 { margin: 0; font-size: 56px; font-weight: 600; letter-spacing: -0.02em; }
+.rewild-start p { margin: 0 0 18px; font-size: 16px; color: rgba(237, 243, 255, 0.66); }
+.rewild-start button {
+  padding: 12px 28px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08); backdrop-filter: blur(18px) saturate(1.4);
+  color: #fff; font: 600 16px 'Inter Variable', Inter, system-ui, sans-serif; cursor: pointer;
+}
+.rewild-start button:hover { background: rgba(255, 255, 255, 0.14); }
+.rewild-start button:focus-visible { outline: 2px solid #ffb547; outline-offset: 3px; }

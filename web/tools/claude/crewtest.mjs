@@ -1,0 +1,44 @@
+// Usage: PORT=4187 node crewtest.mjs <outdir>
+// Crew of four: merged ship at the start, undock (U), step out, switch to Noor (2), dock again, back to Dev (1).
+import { chromium } from '/opt/node-tools/node_modules/playwright/index.mjs';
+const [,, out] = process.argv;
+const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--enable-webgl'] });
+const page = await (await browser.newContext({ viewport: { width: +(process.env.W || 960), height: +(process.env.H || 540) }, deviceScaleFactor: 1 })).newPage();
+const logs = [];
+page.on('pageerror', (e) => logs.push('pageerror: ' + e.message));
+page.on('console', (m) => { if (m.type() === 'error') logs.push('console: ' + m.text().slice(0, 200)); });
+await page.goto(`http://127.0.0.1:${process.env.PORT || 4187}/lab/fly-lab.html?start=projects&landed=1`, { waitUntil: 'load', timeout: 90000 });
+await page.waitForFunction(() => !!window.__expedition && !!window.__three && !!window.__expedition.runtime.hud.ship, null, { timeout: 180000, polling: 500 });
+await page.evaluate(() => { window.__fc = 0; const loop = () => { window.__fc++; requestAnimationFrame(loop); }; requestAnimationFrame(loop); });
+const frames = (n) => page.evaluate(async (n) => { const f0 = window.__fc; while (window.__fc < f0 + n) await new Promise((r) => setTimeout(r, 100)); }, n);
+const state = (label) => page.evaluate((label) => {
+  const r = window.__expedition.runtime; const c = r.crew; const ship = r.player.ship;
+  const m = c.members.map((m, i) => `${m.def.id}${i === c.active ? '*' : ''}${m.walker ? ':foot' : ''}${m.parked ? ':parked@' + (m.home ? m.home.id : 'space') : ''}`).join(' ');
+  return `${label} | mode=${r.mode} landed=${ship.landed} notice="${ship.notice}" | ${m}`;
+}, label);
+const shot = async (name) => { await frames(12); await page.screenshot({ path: `${out}/${name}.png`, timeout: 600000 }); };
+await frames(40);
+console.log(await state('start'));
+await shot('1-start');
+await page.evaluate(() => window.__expedition.input.pressed.add('KeyE'));
+await frames(30);
+console.log(await state('step out'));
+await page.keyboard.press('Digit2');
+await frames(10);
+console.log(await state('switch to noor'));
+await shot('3-noor');
+await page.keyboard.press('Digit1');
+await frames(10);
+console.log(await state('back to dev'));
+await shot('5-dev-on-foot');
+await page.locator('.expedition-hud__crew-face').nth(1).hover();
+await frames(4);
+await page.screenshot({ path: `${out}/6-tip.png`, timeout: 600000 });
+await page.mouse.move(5, 5);
+await page.keyboard.press('KeyJ');
+await frames(6);
+await page.getByRole('tab', { name: 'Crew' }).click();
+await frames(6);
+await page.screenshot({ path: `${out}/7-crew-page.png`, timeout: 600000 });
+console.log('logs:', logs.slice(0, 6).join(' | '));
+await browser.close();

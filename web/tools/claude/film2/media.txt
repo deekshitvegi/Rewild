@@ -1,0 +1,21 @@
+Higgsfield media ids (6 Nov 2026, film 2):
+dev 4c6ec88f-2ab1-4f6d-97af-4243d7ca330f
+noor e1add29d-b4b7-41fe-a9ff-9f5c5c411dc6
+kai aa890623-70cb-4e93-bf7a-1b8489f53c98
+amara 2d853dfd-0618-4991-b672-7dd847fc5857
+argo-a 61fc0a1c-b574-492b-b2a8-bd1a58c87d48
+argo-b c8772580-1425-46ba-a79b-66c3286b9ecc
+approach-saturn ab93df81-64ef-47d0-8d52-20976d621858
+ton618-haven f9c740fb-ab6b-4f23-80fa-09a2606d80b4
+haven-keyart e052e8a2-3730-4cbb-a501-d01db3ba6396
+voices: dev Julian 95429266-c0ac-4137-a209-63b8812b0f23; kai Dylan b847bc29-f184-583a-8ad9-d1f1e16d1a60; amara Onyx 8911390e-4b59-459b-ba84-19010917e1df; noor Naomi caeba733-3c17-43db-863e-69c7025512cd; argo Vesper c3204739-4084-41a3-9dc5-c805b307ec18
+audio jobs: 0 argo-throat 8e058a6d-91e2-468e-b5e2-77a3dfd709b7; 1 dev-strapped 4eec845d-b27a-446d-aafb-c791aea83837; 2 amara-gravity 73782d62-e221-415b-b331-6f5c1ae5f64f; 3 dev-deadcentre 4871ba36-5539-49ed-96f5-d46be430bbd7; 4 argo-entering c319df44-370f-4721-87bc-f4d4875c1db5; 5 kai-hull 2593eb51-1417-4d76-b749-a48703cc5d80; 6 noor-light b7775b85-6900-4568-af1f-3571e81deaa1; 7 argo-3g f3656bdc-be46-4fed-ad7d-21193df14dde; 8 amara-other 11e6d5bb-529d-485d-b8ac-26bbbd556684; 9 dev-out 8b5cc1d5-807f-4aec-9834-f97dfd23c88a; 10 argo-haven ca1d68ae-ac68-4641-9dbd-06cab671c4e7; 11 dev-haven 93cc29e5-b217-4c8c-9020-4f9e2e59a5d4
+image jobs: 0 cockpit 132f1e05-8336-4c62-af2e-96773bcfb8b9; 1 crewbay e5a7f499-78b0-4757-8769-7f5216c4a7cc; 2 approach-home de355065-d222-4f1d-b504-ba5d95ae9e7e; 3 entry-pov a59b94cb-8fd1-4c5d-94e8-86685cf7593a; 4 ruined-earth 4af7a5cf-bc81-460a-b090-28339d98e5f4
+audio jobs 12 argo-solar f58c8c0e-3e7c-4bef-953a-c2dbc3624044; 13 dev-home a5e85cfa-ade9-4038-b360-95e8767268a2; 14 amara-back a5104a8a-6f3e-4dd2-9ccf-694b30fad4dc
+audio media (trimmed mp3): 01 d658dda7-b9a5-45d8-8d64-b545a5f85741; 02 4999d1f5-cce0-46f2-9530-30f38f673cee; 03 7505d53f-b964-4e72-8b83-fd203da3d8f2; 05 742e41ab-0b2b-4966-9a1a-8dc5c57748ca; 06 9137b1b5-0a06-43b1-a6bc-2cbec8863d07; 08 53c64200-4439-44db-833b-bdbb196ba5c6; 09 bcb65dea-963f-4307-a594-f0e4c7e37f9a
+video jobs (kling3_0 pro): 0 approach-out 692e7473-d6f9-49af-b2ba-0fc8d5f3ee93; 1 approach-home b5be8580-9855-40e6-931b-02d494a629c2; 2 entry-pov 01e6bfff-3f41-4bcd-9fc3-9c0e35bb0014; 3 earth fed3df7a-6dba-4568-917a-43211454d5e7; 4 haven-space 58bc8468-4c95-42ce-baeb-70dd3327670c; 5 haven-ground 1b12087a-85c7-4805-9ef6-7181ac30f480
+audio media: 13 d7988d9f-cbbc-4d73-9c2f-f91e9561fc09; 14 f6803289-a46b-4a9d-87fd-f36c0977730c
+intone jobs: 10 cockpit-1 a9a4dbec-bc33-4f50-b03c-91f4a1084ed4; 11 crewbay 836af02f-6db6-4def-83b2-6bef0d3c5b53; 12 cockpit-2 a5e9e3f0-e555-4ad0-925a-047bc7bc4ddb; image k5 cockpit-earth 72fae6cd-bad9-448b-bf52-8800e340b3c3
+intone 13 solar-cockpit 7ef2921f-b581-476d-b1b0-449b44b81624
+seedance jobs: 22 crossing-B b90813f8-4518-45f1-9ab9-ce6bb670f2e4; 23 crossing-C e812db3a-b603-40e6-938f-d082fa772b23; 24 opening-haven 24fb466f-7b65-4e90-8b87-496dd213847b
+seedance jobs: 20 crossing-A-out 425738ec-6f06-409b-9c0a-76ef608f7975; 21 crossing-A-home d5e642a7-95a6-4bf1-99e3-8ebda6446f3b; 25 opening-solar 1a028ea4-b39f-4377-942d-8ae45c26a743

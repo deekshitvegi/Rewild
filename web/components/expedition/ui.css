@@ -1,0 +1,1296 @@
+/* ---- One system for the whole interface ----------------------------------------------------------
+   Loaded last, after expedition.css and hud.css, so it decides colour, shape and the panel layout.
+
+   Direction (1 Nov 2026, the user's pick of four mockups: "glass with instruments"): frosted glass
+   panels with rounded corners, carrying a ship's instruments. A speed dial bottom centre on
+   desktop, ten-step segment meters, the real world on the chapter card, icon tiles for what is
+   carried. Amber is the one accent and marks what you are heading for: the next objective, the
+   target, the pulse drive, the tab on each card. Warm white text in three strengths. Keys are
+   keycaps on desktop. Panels fit the screen they are on: on a phone held sideways they show less
+   rather than shrinking the text, and nothing is smaller than 12px.
+
+   The audit and the pass order follow unslop by Damir Sokolovsky (@heydamir, CC BY 4.0). */
+
+.expedition {
+  --t1: #f4f1ec;
+  --t2: rgba(244, 241, 236, 0.76);
+  --t3: rgba(244, 241, 236, 0.58);
+  --sun: #ffb547;
+  --warn: #ff8a4c;
+  --bad: #e5484d;
+  --good: #4cc38a;
+  --line: rgba(238, 240, 245, 0.1);
+  --line-2: rgba(238, 240, 245, 0.16);
+  --raise: rgba(238, 240, 245, 0.06);
+  --raise-2: rgba(238, 240, 245, 0.11);
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* The older layers' names, pointed at the same few colours. */
+  --gold: var(--sun);
+  --amber: var(--warn);
+  --red: var(--bad);
+  --cyan: var(--t2);
+  --g-fill: rgba(16, 17, 22, 0.5);
+  --g-fill-strong: rgba(14, 15, 20, 0.78);
+  --g-edge: rgba(255, 255, 255, 0.14);
+  --g-rim: rgba(255, 255, 255, 0.16);
+  --g-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  --g-blur: blur(20px) saturate(1.4);
+  --hover: var(--raise-2);
+  --pressed: rgba(238, 240, 245, 0.16);
+  letter-spacing: 0;
+}
+
+/* ---- Glass: one flat material, a hairline and a faint top edge, no sheen ---- */
+.expedition .expedition-hud__left,
+.expedition .expedition-hud__tools,
+.expedition .expedition-hud__leave,
+.expedition .expedition-hud__status,
+.expedition .expedition-hud__prompts > span,
+.expedition .expedition-hud__notice,
+.expedition .expedition-hud__help,
+.expedition .expedition-discovery,
+.expedition .expedition-hud__fauna,
+.expedition .expedition-radio,
+.expedition .expedition-fishing,
+.expedition .expedition-argo {
+  border-color: var(--line);
+  background: var(--g-fill);
+  box-shadow: var(--g-shadow), inset 0 1px 0 var(--g-rim);
+}
+
+.expedition .expedition-argo { background: var(--g-fill-strong); }
+
+@media (min-width: 601px) and (min-height: 501px) {
+  .expedition .expedition-hud__cargo {
+    border-color: var(--line);
+    background: var(--g-fill);
+    box-shadow: var(--g-shadow), inset 0 1px 0 var(--g-rim);
+  }
+}
+
+/* Cards are rounded rectangles; capsules are kept for buttons and the toolbar. */
+.expedition .expedition-hud__left,
+.expedition .expedition-hud__status,
+.expedition .expedition-hud__help,
+.expedition .expedition-discovery { border-radius: 20px; }
+
+.expedition .expedition-hud__fauna,
+.expedition .expedition-radio,
+.expedition .expedition-fishing,
+.expedition .expedition-argo { border-radius: 16px; }
+
+@media (min-width: 601px) and (min-height: 501px) {
+  .expedition .expedition-hud__cargo { border-radius: 16px; }
+}
+
+/* ---- Text roles ---- */
+.expedition .expedition-hud__objective small,
+.expedition .expedition-hud__status small,
+.expedition .expedition-vault small,
+.expedition .expedition-hud__expedition small {
+  color: var(--t3);
+  font-weight: 500;
+}
+
+.expedition .expedition-argo b { color: var(--t3); font-weight: 600; }
+.expedition .expedition-argo.is-warn b { color: var(--warn); }
+.expedition .expedition-argo.is-danger b { color: var(--bad); }
+.expedition .expedition-argo.is-danger { border-color: rgba(229, 72, 77, 0.45); background: rgba(34, 12, 14, 0.82); }
+
+/* The current chapter is what you are heading for: its name is the accent. */
+.expedition .expedition-story small { color: var(--sun); }
+
+.expedition .expedition-story li i {
+  border-color: var(--t3);
+}
+
+.expedition .expedition-story__bonus { color: var(--t2); }
+
+/* ---- Keycaps: the key, drawn as a key (hidden on touch screens by the earlier rule) ---- */
+.expedition kbd,
+.expedition .expedition-hud kbd {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border: 1px solid var(--line-2);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: var(--raise);
+  color: var(--t2);
+  font: 500 0.75rem/1 inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Toolbar and the way out ---- */
+.expedition .expedition-hud__actions button.is-exit,
+.expedition .expedition-hud__leave { border-color: var(--line); }
+
+.expedition .expedition-hud__leave:hover,
+.expedition .expedition-hud__leave:focus-visible {
+  border-color: rgba(229, 72, 77, 0.45);
+  background: rgba(40, 14, 16, 0.7);
+}
+
+.expedition .expedition-hud__tools button[data-tip]::after {
+  border-color: var(--line);
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+/* Buttons inside the HUD: a quiet raised surface, not a pill with a white edge. */
+.expedition .expedition-story button {
+  min-height: 32px;
+  padding: 0 6px 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--raise);
+  font-weight: 500;
+}
+
+/* ---- Bottom left: speed and the meters ---- */
+.expedition .expedition-hud__speed b {
+  font-size: 1.75rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* One colour for every meter; red only when it is running out. */
+.expedition .expedition-hud__bars i { background: var(--raise-2); }
+.expedition .expedition-hud__bars i[data-tone] { --bar: var(--t1); }
+.expedition .expedition-hud__bars i[data-tone="danger"] { --bar: var(--bad); }
+
+/* ---- What is carried: line icons in the text colour, not glossy gems ---- */
+.expedition .expedition-hud__crystal,
+.expedition .expedition-hud__food,
+.expedition .expedition-craft__purse i,
+.expedition .expedition-craft__list em i {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border-radius: 0;
+  background: currentColor;
+  color: var(--t2);
+  box-shadow: none;
+  filter: none;
+  clip-path: none;
+  -webkit-mask: var(--icon) center / contain no-repeat;
+  mask: var(--icon) center / contain no-repeat;
+}
+
+.expedition .expedition-hud__crystal,
+.expedition .expedition-craft__purse i,
+.expedition .expedition-craft__list em i {
+  --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 3h12l4 6-10 13L2 9Z'/%3E%3Cpath d='M11 3 8 9l4 13 4-13-3-6'/%3E%3Cpath d='M2 9h20'/%3E%3C/svg%3E");
+}
+
+.expedition .expedition-hud__food {
+  --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 6.5V3'/%3E%3Cpath d='M18.2 21A15 15 0 0 0 22 11a6 6 0 0 0-10-4.5A6 6 0 0 0 2 11a15 15 0 0 0 3.8 10 3 3 0 0 0 3.6.6 5.5 5.5 0 0 1 5.2 0 3 3 0 0 0 3.6-.6Z'/%3E%3C/svg%3E");
+}
+
+.expedition .expedition-hud__food::after { display: none; }
+.expedition .expedition-craft__list em i { width: 14px; height: 14px; vertical-align: -2px; }
+
+/* ---- Markers in the view: no glow, a dark edge so they read on snow and sky ---- */
+.expedition .expedition-hud__marker,
+.expedition .expedition-hud__site {
+  font-weight: 500;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
+}
+
+/* ---- Panels: the dialog over the game ---- */
+/* One row the height of the screen, so a long panel scrolls inside itself instead of running off it. */
+.expedition .expedition-map {
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
+  background: rgba(4, 5, 9, 0.55);
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+}
+
+.expedition .expedition-map__panel,
+.expedition .expedition-log__panel {
+  padding: 20px 24px 24px;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: rgba(12, 14, 20, 0.86);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  color: var(--t1);
+}
+
+.expedition .expedition-map__panel {
+  box-sizing: border-box;
+  max-height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Header: the title on the left, the tabs and the close button on the right. */
+.expedition .expedition-map__panel > header,
+.expedition .expedition-log__panel > header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px 16px;
+  margin-bottom: 16px;
+}
+
+.expedition .expedition-map__panel > header small,
+.expedition .expedition-log__panel > header small {
+  display: block;
+  color: var(--t3);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.expedition .expedition-map__panel h2,
+.expedition .expedition-log__panel h2 {
+  margin: 2px 0 0;
+  color: var(--t1);
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.expedition .expedition-map__header-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Close / Done: a quiet button, with its key on desktop. */
+.expedition .expedition-map__close,
+.expedition .expedition-log__panel > header button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 0 8px 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--raise);
+  color: var(--t1);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  transition: background-color 150ms var(--ease), border-color 150ms var(--ease);
+}
+
+.expedition .expedition-map__close:hover,
+.expedition .expedition-log__panel > header button:hover { background: var(--raise-2); }
+
+.expedition .expedition-map__close:focus-visible,
+.expedition .expedition-log__panel > header button:focus-visible,
+.expedition .expedition-map__tabs button:focus-visible {
+  outline: 1.5px solid rgba(238, 240, 245, 0.32);
+  outline-offset: 2px;
+}
+
+@media (pointer: coarse) {
+  .expedition .expedition-map__close,
+  .expedition .expedition-log__panel > header button { min-height: 36px; padding: 0 14px; }
+}
+
+/* Tabs: a segmented control. The chosen one is a step lighter, not a colour. */
+.expedition .expedition-map__tabs {
+  display: inline-grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 2px;
+  padding: 3px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--raise);
+}
+
+.expedition .expedition-map__panel header .expedition-map__tabs button {
+  min-height: 30px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--t2);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background-color 150ms var(--ease), color 150ms var(--ease);
+}
+
+.expedition .expedition-map__panel header .expedition-map__tabs button:hover { color: var(--t1); }
+
+.expedition .expedition-map__panel header .expedition-map__tabs button[aria-selected="true"] {
+  background: var(--pressed);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  color: var(--t1);
+}
+
+/* Reading text inside panels. */
+.expedition .expedition-craft__intro,
+.expedition .expedition-graphics p {
+  color: var(--t2);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+/* Rows inside panels: one surface, one radius. */
+.expedition .expedition-craft__list button,
+.expedition .expedition-chapters__list > li,
+.expedition .expedition-trades > li,
+.expedition .expedition-map__list button,
+.expedition .expedition-map__position div,
+.expedition .expedition-map__scale button,
+.expedition .expedition-map__auto,
+.expedition .expedition-map__mark,
+.expedition .surface-map__waypoint button,
+.expedition .surface-map__here,
+.expedition .surface-map__waypoint,
+.expedition .surface-map__places button {
+  border-color: var(--line);
+  border-radius: 12px;
+  background: var(--raise);
+}
+
+.expedition .surface-map__places button:hover,
+.expedition .surface-map__places button:focus-visible,
+.expedition .expedition-map__list button:hover,
+.expedition .expedition-craft__list button:hover { border-color: var(--line-2); background: var(--raise-2); }
+
+/* The place you are heading for, in the lists: the accent as a thin edge. */
+.expedition .surface-map__places button.is-target,
+.expedition .expedition-map__list button.is-target,
+.expedition .expedition-map__auto.is-on,
+.expedition .expedition-map__mark.is-on {
+  border-color: rgba(242, 196, 107, 0.55);
+  background: rgba(242, 196, 107, 0.07);
+}
+
+.expedition .surface-map__here small,
+.expedition .surface-map__waypoint small { color: var(--t3); font-weight: 500; }
+.expedition .surface-map__view { border-color: var(--line); border-radius: 12px; }
+.expedition .surface-map__view:focus-visible { outline-color: rgba(238, 240, 245, 0.45); }
+.expedition .surface-map__tools button { border-radius: 10px; }
+.expedition .surface-map__hint,
+.expedition .expedition-map__hint { color: var(--t3); }
+
+/* Chapters: one card each. The current one is a step lighter; its label carries the accent. */
+.expedition .expedition-chapters__list > li { padding: 14px 16px; }
+.expedition .expedition-chapters__list > li.is-current { border-color: var(--line-2); background: var(--raise-2); }
+.expedition .expedition-chapters__list > li header small { color: var(--t3); font-weight: 500; }
+.expedition .expedition-chapters__list > li.is-current header small { color: var(--sun); }
+.expedition .expedition-chapters__list > li header b { font-size: 1rem; font-weight: 600; }
+.expedition .expedition-chapters__list > li header em { color: var(--t3); font-style: normal; font-weight: 500; }
+.expedition .expedition-chapters__list > li.is-current header em { color: var(--t2); }
+.expedition .expedition-chapters__list > li > p { color: var(--t2); font-size: 0.8125rem; line-height: 1.5; }
+.expedition .expedition-chapters__list li li { font-size: 0.8125rem; }
+.expedition .expedition-chapters__list li li > i:not(.expedition-medal) { border-color: var(--t3); border-radius: 4px; }
+.expedition .expedition-chapters__list li li.is-met > i:not(.expedition-medal) { border-color: var(--sun); background: var(--sun); }
+.expedition .expedition-chapters__bonus { border-top: 1px solid var(--line) !important; color: var(--t2); }
+.expedition .expedition-chapters__bonus small,
+.expedition .expedition-chapters__bonus b { color: var(--t2); }
+.expedition .expedition-trades__ranks i.is-done { background: var(--sun); }
+.expedition .expedition-trades__ranks i.is-next { background: rgba(242, 196, 107, 0.35); }
+
+/* Graphics: segments with a lighter chosen step, and the advice as a quiet note. */
+.expedition .expedition-graphics h3 { color: var(--t1); font-size: 0.8125rem; font-weight: 600; }
+/* Settings › Graphics › Effects: one row per effect, its name over its choices. */
+.expedition .expedition-graphics__effect { display: grid; gap: 6px; min-width: 0; }
+.expedition .expedition-graphics__effect + .expedition-graphics__effect { margin-top: 6px; }
+.expedition .expedition-graphics h4 { margin: 0; color: var(--t2); font-size: 0.8125rem; font-weight: 500; }
+.expedition .expedition-graphics__segments { border: 0; background: var(--raise); }
+.expedition .expedition-graphics__segments button { color: var(--t2); font-size: 0.8125rem; font-weight: 500; }
+.expedition .expedition-graphics__segments button[aria-checked="true"] {
+  background: var(--pressed);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  color: var(--t1);
+}
+.expedition .expedition-graphics__advice {
+  border-radius: 12px;
+  background: rgba(232, 165, 75, 0.1);
+  box-shadow: none;
+  color: #f3dcb6;
+}
+
+/* The data log of a monolith: the panel's own glass, no tinted halo. */
+.expedition .expedition-log__panel { border-color: var(--line); }
+
+/* Leftover tints from the older layers, brought into the same ramp. */
+.expedition .expedition-map__scale button[aria-pressed="true"] { border-color: var(--line-2); background: var(--pressed); color: var(--t1); }
+.expedition .expedition-trades__bar i::after { background: var(--t1); }
+.expedition .expedition-vault,
+.expedition .expedition-vault__key svg { border-color: var(--line); }
+.expedition .expedition-vault.is-running { border-color: rgba(242, 196, 107, 0.5); }
+.expedition .expedition-vault__key span.is-lit svg { background: rgba(242, 196, 107, 0.16); border-color: rgba(242, 196, 107, 0.5); }
+.expedition .expedition-log__panel { box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08); }
+.expedition .expedition-log__panel header small { color: var(--t3); }
+.expedition .expedition-log__link {
+  border: 1px solid var(--line-2);
+  border-radius: 10px;
+  background: var(--raise);
+  color: var(--t1);
+}
+.expedition .expedition-log__link:hover { background: var(--raise-2); }
+.expedition .expedition-log__link:focus-visible { outline: 1.5px solid rgba(238, 240, 245, 0.32); outline-offset: 2px; }
+
+/* ---- Touch controls: round glass buttons, a line icon over a short label ---- */
+.expedition .expedition-touch__stick {
+  border-color: var(--line-2);
+  background: rgba(12, 14, 20, 0.38);
+}
+
+.expedition .expedition-touch__stick span {
+  border-color: rgba(238, 240, 245, 0.32);
+  background: rgba(238, 240, 245, 0.14);
+}
+
+.expedition .expedition-touch__buttons button {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 3px;
+  border-color: var(--line-2);
+  background: rgba(12, 14, 20, 0.5);
+  color: var(--t1);
+  font: 500 0.6875rem/1 inherit;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.expedition .expedition-touch__buttons button svg { flex: none; }
+.expedition .expedition-touch__buttons button span { color: var(--t2); }
+.expedition .expedition-touch__buttons button:active,
+.expedition .expedition-touch__buttons button[aria-pressed="true"] { background: rgba(238, 240, 245, 0.2); }
+.expedition .expedition-touch__buttons button[aria-pressed="true"] svg { color: var(--sun); }
+
+/* Touch screens have no keyboard: no keycaps anywhere. */
+@media (pointer: coarse) {
+  .expedition kbd,
+  .expedition .expedition-hud kbd { display: none; }
+  .expedition .expedition-map__close,
+  .expedition .expedition-story button { padding-right: 12px; }
+}
+
+/* ---- Narrow screens (phones upright, the Claude app's side panel): the panel header in two rows ---- */
+@media (max-width: 640px) {
+  .expedition .expedition-map { padding-left: max(8px, env(safe-area-inset-left)); padding-right: max(8px, env(safe-area-inset-right)); }
+  .expedition .expedition-map__panel,
+  .expedition .expedition-log__panel { padding: 16px 16px 20px; border-radius: 20px; }
+  .expedition .expedition-map__header-actions { display: contents; }
+  .expedition .expedition-map__panel > header > div:first-child { grid-column: 1; grid-row: 1; min-width: 0; }
+  .expedition .expedition-map__close { grid-column: 2; grid-row: 1; }
+  .expedition .expedition-map__tabs { grid-column: 1 / -1; grid-row: 2; display: grid; width: 100%; }
+  .expedition .expedition-craft__purse { grid-column: 1 / -1; grid-row: 3; }
+}
+
+/* ---- Phones held sideways: show less, keep the text readable ---- */
+@media (max-height: 500px) and (orientation: landscape) {
+  .expedition .expedition-map { padding-top: max(8px, env(safe-area-inset-top)); padding-bottom: max(8px, env(safe-area-inset-bottom)); }
+  .expedition .expedition-map__panel,
+  .expedition .expedition-log__panel { padding: 12px 16px 16px; border-radius: 18px; }
+  .expedition .expedition-map__panel > header,
+  .expedition .expedition-log__panel > header { margin-bottom: 10px; }
+  .expedition .expedition-map__panel > header small { display: none; }
+  .expedition .expedition-map__panel h2 { margin: 4px 0 0; font-size: 1rem; }
+  .expedition .expedition-craft__intro { display: none; }
+
+  /* The surface map beside its list, both as tall as the screen allows. */
+  .expedition .surface-map {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 12px;
+    margin-top: 0;
+  }
+  .expedition .surface-map__view {
+    width: calc(100dvh - 104px);
+    max-width: 52vw;
+    justify-self: start;
+  }
+  .expedition .surface-map__side { max-height: calc(100dvh - 104px); overflow-y: auto; overscroll-behavior: contain; }
+  .expedition .surface-map__places { max-height: none; overflow: visible; }
+  .expedition .surface-map__hint { display: none; }
+
+  /* The HUD: the chapter card keeps its title and first objective; nothing under 12px. */
+  .expedition .expedition-hud__left { width: min(260px, 36vw); border-radius: 16px; }
+  .expedition .expedition-story strong,
+  .expedition .expedition-hud__objective strong { font-size: 0.8125rem; }
+  .expedition .expedition-story li { font-size: 0.75rem; }
+  .expedition .expedition-story button { min-height: 28px; font-size: 0.75rem; }
+  .expedition .expedition-hud__status { border-radius: 16px; }
+  .expedition .expedition-hud__speed b { font-size: 1.25rem; }
+  .expedition .expedition-hud__bars label { grid-template-columns: 44px 72px; font-size: 0.75rem; }
+  .expedition .expedition-hud__status p { font-size: 0.75rem; }
+  .expedition .expedition-argo { font-size: 0.75rem; }
+  .expedition .expedition-touch__buttons button { gap: 2px; }
+}
+
+/* ---- Phones upright: the meters' labels at the minimum size ---- */
+@media (max-width: 600px) and (orientation: portrait) {
+  .expedition .expedition-hud__bars label { grid-template-columns: 48px 92px; font-size: 0.75rem; }
+  .expedition .expedition-touch__buttons button { font-size: 0.6875rem; }
+  .expedition .expedition-hud__cargo b { font-weight: 600; }
+}
+
+/* ---- Big screens: the corner cards a size up, so they hold their own on 1440p and wider ---- */
+@media (min-width: 1800px) and (min-height: 1000px) {
+  .expedition .expedition-hud__left,
+  .expedition .expedition-hud__actions,
+  .expedition .expedition-hud__status,
+  .expedition .expedition-hud__cargo { zoom: 1.15; }
+}
+
+@media (min-width: 2400px) and (min-height: 1300px) {
+  .expedition .expedition-hud__left,
+  .expedition .expedition-hud__actions,
+  .expedition .expedition-hud__status,
+  .expedition .expedition-hud__cargo { zoom: 1.3; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .expedition .expedition-map__close,
+  .expedition .expedition-map__tabs button { transition: none; }
+}
+
+/* ==== Glass with instruments ===================================================================== */
+
+/* Cards: rounded glass, an amber tab along the top edge. */
+.expedition .expedition-hud__left,
+.expedition .expedition-hud__status,
+.expedition .expedition-discovery { border-radius: 18px; }
+
+.expedition .expedition-argo,
+.expedition .expedition-hud__fauna,
+.expedition .expedition-radio,
+.expedition .expedition-fishing { border-radius: 16px; }
+
+.expedition .expedition-map__panel,
+.expedition .expedition-log__panel { position: relative; border-radius: 22px; }
+
+.expedition .expedition-hud__left::before,
+.expedition .expedition-hud__status::before,
+.expedition .expedition-argo::before,
+.expedition .expedition-discovery::before,
+.expedition .expedition-map__panel::before,
+.expedition .expedition-log__panel::before {
+  content: '';
+  position: absolute;
+  left: 18px;
+  top: 0;
+  z-index: 1;
+  width: 40px;
+  height: 3px;
+  border-radius: 0 0 3px 3px;
+  background: var(--sun);
+  pointer-events: none;
+}
+
+.expedition .expedition-argo.is-warn::before { background: var(--warn); }
+.expedition .expedition-argo.is-danger::before { background: var(--bad); }
+.expedition .expedition-argo b { color: var(--sun); }
+.expedition .expedition-argo.is-warn b { color: var(--warn); }
+.expedition .expedition-argo.is-danger b { color: var(--bad); }
+
+/* ---- The chapter card: the real world, the chapter, what to do next ---- */
+.expedition .expedition-story__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.expedition .expedition-world {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #2a2c33;
+  background-size: 200% 100%;
+  background-position: 32% 50%;
+  /* Lit from the upper left: the night side falls away to the lower right. */
+  box-shadow: inset -9px -7px 12px rgba(0, 0, 0, 0.72), inset 1px 1px 2px rgba(255, 255, 255, 0.18), 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+.expedition .expedition-story small { color: var(--sun); font-weight: 600; }
+.expedition .expedition-story strong { margin-top: 1px; font-size: 1.25rem; font-weight: 600; line-height: 1.2; }
+
+.expedition .expedition-story li {
+  grid-template-columns: 12px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.expedition .expedition-story li i {
+  justify-self: center;
+  width: 9px;
+  height: 9px;
+  border: 1.5px solid rgba(244, 241, 236, 0.55);
+  border-radius: 1px;
+  transform: rotate(45deg);
+}
+
+.expedition .expedition-story li.is-next i { border-color: var(--sun); background: rgba(255, 181, 71, 0.25); }
+.expedition .expedition-story li b { color: var(--t3); font-weight: 500; font-variant-numeric: tabular-nums; }
+
+.expedition .expedition-story button {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  font-weight: 600;
+}
+
+/* ---- Meters: ten steps each, warm white; boost amber, red when running out ---- */
+.expedition .expedition-hud__bars i {
+  height: 8px;
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.14);
+  -webkit-mask: repeating-linear-gradient(90deg, #000 0 calc(10% - 3px), transparent calc(10% - 3px) 10%);
+  mask: repeating-linear-gradient(90deg, #000 0 calc(10% - 3px), transparent calc(10% - 3px) 10%);
+}
+
+.expedition .expedition-hud__bars i::after { border-radius: 0; }
+.expedition .expedition-hud__bars i[data-tone] { --bar: var(--t1); }
+.expedition .expedition-hud__bars i[data-tone="boost"],
+.expedition .expedition-hud__bars i[data-tone="jetpack"] { --bar: var(--sun); }
+.expedition .expedition-hud__bars i[data-tone="danger"] { --bar: var(--bad); }
+
+/* ---- The speed dial (desktop): the speed leaves the status card for it ---- */
+.expedition .expedition-dial { display: none; }
+
+@media (pointer: fine) and (min-width: 721px) and (min-height: 501px) {
+  .expedition .expedition-dial {
+    position: absolute;
+    left: 50%;
+    bottom: max(12px, env(safe-area-inset-bottom));
+    display: block;
+    width: 300px;
+    height: 150px;
+    transform: translateX(-50%);
+    pointer-events: none;
+  }
+
+  .expedition .expedition-hud__speed { display: none; }
+  .expedition .expedition-hud__prompts { bottom: max(174px, calc(env(safe-area-inset-bottom) + 162px)); }
+  .expedition .expedition-argo,
+  .expedition .expedition-hud.has-card .expedition-argo { bottom: max(230px, calc(env(safe-area-inset-bottom) + 218px)); }
+}
+
+.expedition .expedition-dial svg { position: absolute; inset: 0; overflow: visible; }
+.expedition .expedition-dial__track { fill: none; stroke: rgba(255, 255, 255, 0.16); stroke-width: 8; }
+.expedition .expedition-dial__value { fill: none; stroke: var(--t1); stroke-width: 8; transition: stroke 200ms var(--ease); }
+.expedition .expedition-dial.is-pulse .expedition-dial__value { stroke: var(--sun); }
+.expedition .expedition-dial line { stroke: rgba(244, 241, 236, 0.6); stroke-width: 2; }
+
+.expedition .expedition-dial b,
+.expedition .expedition-dial span {
+  position: absolute;
+  left: 0;
+  right: 0;
+  text-align: center;
+  color: var(--t1);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+  font-variant-numeric: tabular-nums;
+}
+
+.expedition .expedition-dial b { bottom: 34px; font-size: 2.75rem; font-weight: 600; line-height: 1; letter-spacing: -0.02em; }
+.expedition .expedition-dial span { bottom: 12px; color: var(--t2); font-size: 0.75rem; font-weight: 500; }
+
+@media (min-width: 1800px) and (min-height: 1000px) {
+  .expedition .expedition-dial { width: 345px; height: 172px; }
+  .expedition .expedition-dial b { bottom: 40px; font-size: 3.125rem; }
+}
+
+/* ---- What is carried: tiles with an icon (desktop), icon and number (phones) ---- */
+.expedition .expedition-hud__item { flex: none; width: 16px; height: 16px; color: var(--t2); stroke-width: 1.6; }
+.expedition .expedition-hud__cargo b em { color: var(--t3); font-style: normal; font-weight: 500; }
+
+@media (min-width: 601px) and (min-height: 501px) {
+  .expedition .expedition-hud__cargo {
+    display: flex;
+    gap: 6px;
+    padding: 8px;
+    border-radius: 18px;
+  }
+
+  .expedition .expedition-hud__cargo div {
+    display: grid;
+    justify-items: center;
+    align-content: center;
+    gap: 3px;
+    width: 64px;
+    padding: 9px 0 8px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.07);
+  }
+
+  .expedition .expedition-hud__cargo b { justify-self: center; font-size: 1rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .expedition .expedition-hud__cargo b em { font-size: 0.75rem; }
+  .expedition .expedition-hud__cargo small { align-self: auto; color: var(--t3); font-size: 0.75rem; }
+}
+
+/* ---- What can be done here: a glass button with an amber key ---- */
+.expedition .expedition-hud__prompts > span { min-height: 40px; padding: 0 16px 0 6px; border-radius: 999px; font-weight: 600; }
+.expedition .expedition-hud__prompts > span:not(:has(kbd)) { padding-left: 16px; }
+.expedition .expedition-hud__prompts kbd {
+  min-width: 28px;
+  height: 28px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--sun);
+  color: #1c1306;
+  font-weight: 700;
+}
+
+/* ---- Panels: tabs as a capsule, the chosen one lighter ---- */
+.expedition .expedition-map__panel > header small,
+.expedition .expedition-log__panel > header small { color: var(--sun); font-weight: 600; }
+
+/* ---- Phones held sideways: a smaller world on the chapter card ---- */
+@media (max-height: 500px) and (orientation: landscape) {
+  .expedition .expedition-world { width: 28px; height: 28px; }
+  .expedition .expedition-story__head { gap: 8px; padding-bottom: 6px; }
+  .expedition .expedition-story strong { font-size: 0.875rem; }
+  .expedition .expedition-hud__left::before,
+  .expedition .expedition-hud__status::before { left: 14px; width: 28px; }
+}
+
+@media (max-width: 600px) and (orientation: portrait) {
+  .expedition .expedition-world { width: 34px; height: 34px; }
+  .expedition .expedition-story strong { font-size: 1rem; }
+}
+
+/* Mark and Auto side by side at the end of a world's row. */
+.expedition .expedition-map__actions { display: flex; gap: 6px; align-self: stretch; }
+.expedition .expedition-map__mark {
+  min-height: 30px;
+  min-width: 64px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  color: var(--t2);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.expedition .expedition-map__mark.is-on { color: var(--t1); }
+
+/* Key hints that have stood on screen a while fade out of the way (H brings them back). */
+/* Once faded they fold away too: left in the row invisible, they pushed the prompts still showing
+   off the middle of the screen. */
+.expedition .expedition-hud__prompts > span { max-width: 32em; max-height: 6em; transition: opacity 0.6s ease, visibility 0s linear 0s, max-width 0.3s ease, padding 0.3s ease, margin 0.3s ease; }
+.expedition .expedition-hud__prompts > span.is-quiet {
+  opacity: 0;
+  visibility: hidden;
+  max-width: 0;
+  max-height: 0;
+  min-height: 0;
+  padding-left: 0;
+  padding-right: 0;
+  margin-inline: -4px;
+  border-width: 0;
+  overflow: hidden;
+  transition: opacity 1.2s ease, visibility 0s linear 1.2s, max-width 0.3s ease 1.2s, max-height 0s linear 1.5s, min-height 0s linear 1.5s, padding 0.3s ease 1.2s, margin 0.3s ease 1.2s, border-width 0s linear 1.2s;
+}
+
+/* The compass along the top: the way the view faces, with the ship, the waypoint and the course on it. */
+.expedition .expedition-compass {
+  --compass-width: 420px;
+  position: absolute;
+  top: max(16px, env(safe-area-inset-top));
+  left: 50%;
+  width: var(--compass-width);
+  margin-left: calc(var(--compass-width) / -2);
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+.expedition .expedition-compass[data-on="0"] { opacity: 0; }
+.expedition .expedition-compass__window {
+  position: relative;
+  width: 100%;
+  height: 40px;
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--g-fill, rgba(16, 17, 22, 0.5));
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+}
+/* The ticks fade out towards the ends; the marks (pinned to the ends when off to the side) do not. */
+.expedition .expedition-compass__ticks {
+  position: absolute;
+  inset: 0;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent);
+}
+.expedition .expedition-compass__window::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 2px;
+  height: 8px;
+  margin-left: -1px;
+  border-radius: 0 0 2px 2px;
+  background: var(--t1);
+}
+.expedition .expedition-compass__track {
+  position: absolute;
+  inset: 0 auto 0 0;
+  will-change: transform;
+}
+.expedition .expedition-compass__track span {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  margin-left: -16px;
+  color: var(--t2);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.expedition .expedition-compass__track span.is-cardinal { color: var(--t1); font-size: 14px; }
+.expedition .expedition-compass__track span.is-tick::before {
+  content: "";
+  width: 1px;
+  height: 8px;
+  background: var(--t3);
+}
+.expedition .expedition-compass__mark {
+  position: absolute;
+  left: 0;
+  top: 4px;
+  width: 64px;
+  margin-left: -32px;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  will-change: transform;
+  transition: opacity 0.3s ease;
+}
+.expedition .expedition-compass__mark[data-on="0"] { opacity: 0; }
+.expedition .expedition-compass__mark i {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  transform: rotate(45deg);
+  background: var(--mark);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.55);
+}
+.expedition .expedition-compass__mark.is-ship i { border-radius: 50%; transform: none; }
+.expedition .expedition-compass__mark[data-edge="left"] i,
+.expedition .expedition-compass__mark[data-edge="right"] i {
+  width: 0;
+  height: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+  transform: none;
+}
+.expedition .expedition-compass__mark[data-edge="left"] i { border-right: 9px solid var(--mark); }
+.expedition .expedition-compass__mark[data-edge="right"] i { border-left: 9px solid var(--mark); }
+.expedition .expedition-compass__mark small {
+  color: var(--t1);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+}
+.expedition .expedition-compass__heading {
+  color: var(--t2);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+}
+/* Between the log card and the toolbar on laptops; narrower on small screens, under the top cards on phones. */
+@media (max-width: 1240px) { .expedition .expedition-compass { --compass-width: 300px; top: calc(max(16px, env(safe-area-inset-top)) + 60px); } }
+@media (max-width: 720px) { .expedition .expedition-compass { --compass-width: 240px; top: auto; bottom: calc(env(safe-area-inset-bottom) + 220px); } }
+
+/* The system map zooms and pans (mapZoom.ts): labels and lines keep their size on screen. */
+.expedition .expedition-map__chart { position: relative; }
+.expedition .expedition-map__chart svg.is-zoomable { cursor: grab; touch-action: none; user-select: none; }
+.expedition .expedition-map__chart svg.is-zoomable:active { cursor: grabbing; }
+/* --unit: map units per screen pixel (mapZoom.ts), so text is sized in pixels. */
+.expedition .expedition-map__chart svg .expedition-map__label { font-size: calc(var(--unit, 1) * 13px); stroke-width: calc(var(--unit, 1) * 3px); }
+.expedition .expedition-map__chart svg .expedition-map__label--dim { font-size: calc(var(--unit, 1) * 12px); }
+.expedition .expedition-map__chart svg .expedition-map__label--moon { font-size: calc(var(--unit, 1) * 12px); fill: var(--t2); }
+.expedition .expedition-map__chart svg .expedition-map__belt { font-size: calc(var(--unit, 1) * 12px); }
+/* A bigger chart: the map is what this dialog is for. */
+.expedition .expedition-map__panel:not(.is-surface) { width: min(1180px, 100%); }
+@media (min-width: 721px) { .expedition .expedition-map__panel:not(.is-surface) .expedition-map__body { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); } }
+.expedition .expedition-map__world { cursor: pointer; }
+.expedition .expedition-map__zoom {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  z-index: 1;
+  display: flex;
+  gap: 6px;
+}
+.expedition .expedition-map__zoom button {
+  min-width: 40px;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--g-fill, rgba(16, 17, 22, 0.6));
+  color: var(--t1);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.expedition .expedition-map__zoom button:hover,
+.expedition .expedition-map__zoom button:focus-visible { border-color: var(--line-2); }
+
+/* The first-flight guide's way out. */
+.expedition .expedition-hud__skip {
+  justify-self: start;
+  margin-top: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--t3);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.expedition .expedition-hud__skip:hover,
+.expedition .expedition-hud__skip:focus-visible { color: var(--t2); }
+
+/* ---- Crew: four faces in a column under the toolbar, the one being played ringed in amber;
+   1-4 or a tap switches; hovering one shows who and where ---- */
+.expedition .expedition-hud__crew {
+  position: absolute;
+  top: calc(var(--actions-bottom, 58px) + 10px);
+  right: max(16px, env(safe-area-inset-right));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 6px;
+  border: 1px solid var(--g-edge);
+  border-radius: 999px;
+  background: var(--g-fill);
+  -webkit-backdrop-filter: var(--g-blur);
+  backdrop-filter: var(--g-blur);
+  box-shadow: var(--g-shadow);
+  pointer-events: auto;
+}
+
+.expedition .expedition-hud__crew-face {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--line-2);
+  border-radius: 50%;
+  background: var(--raise);
+  cursor: pointer;
+  transition: border-color 160ms var(--ease), transform 160ms var(--ease);
+}
+
+.expedition .expedition-hud__crew-face img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  filter: saturate(0.8) brightness(0.8);
+  transition: filter 160ms var(--ease);
+}
+
+.expedition .expedition-hud__crew-face:hover img,
+.expedition .expedition-hud__crew-face:focus-visible img,
+.expedition .expedition-hud__crew-face.is-active img { filter: none; }
+
+.expedition .expedition-hud__crew-face:hover { border-color: var(--t3); }
+.expedition .expedition-hud__crew-face:focus-visible { outline: 2px solid var(--t2); outline-offset: 2px; }
+.expedition .expedition-hud__crew-face:active { transform: scale(0.96); }
+.expedition .expedition-hud__crew-face.is-active { border: 2px solid var(--sun); }
+
+/* Docked with you: riding along, a quiet amber edge. */
+.expedition .expedition-hud__crew-face.is-with { border-color: rgba(255, 181, 71, 0.5); }
+
+.expedition .expedition-hud__crew-face kbd {
+  position: absolute;
+  left: -6px;
+  bottom: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: rgba(14, 15, 20, 0.92);
+}
+
+.expedition .expedition-hud__crew-face.is-active kbd { border-color: var(--sun); color: var(--sun); }
+
+.expedition .expedition-hud__crew-tip {
+  position: absolute;
+  top: calc(6px + var(--row, 0) * 52px);
+  right: calc(100% + 10px);
+  display: grid;
+  gap: 2px;
+  width: max-content;
+  max-width: 240px;
+  margin: 0;
+  padding: 8px 12px 9px;
+  border: 1px solid var(--g-edge);
+  border-radius: 12px;
+  background: var(--g-fill-strong);
+  -webkit-backdrop-filter: var(--g-blur);
+  backdrop-filter: var(--g-blur);
+  color: var(--t2);
+  font-size: 0.8125rem;
+  line-height: 1.3;
+  pointer-events: none;
+}
+
+.expedition .expedition-hud__crew-tip b { color: var(--t1); font-weight: 600; font-size: 0.875rem; }
+.expedition .expedition-hud__crew-tip span:last-child { color: var(--t1); }
+
+@media (max-width: 720px), (max-height: 500px) {
+  .expedition .expedition-hud__crew { right: max(10px, env(safe-area-inset-right)); gap: 6px; padding: 5px; }
+  .expedition .expedition-hud__crew-face { width: 36px; height: 36px; }
+  .expedition .expedition-hud__crew-tip { top: calc(5px + var(--row, 0) * 42px); }
+}
+
+/* ---- Crew page (J log): the four, full portraits ---- */
+.expedition .expedition-crew {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.expedition .expedition-crew li {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--raise);
+}
+
+.expedition .expedition-crew li.is-active { border-color: rgba(255, 181, 71, 0.55); }
+
+.expedition .expedition-crew img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 720 / 964;
+  object-fit: cover;
+}
+
+.expedition .expedition-crew li > div {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  padding: 12px 14px 14px;
+}
+
+.expedition .expedition-crew strong { color: var(--t1); font-size: 1rem; font-weight: 600; }
+.expedition .expedition-crew small { color: var(--t3); font-size: 0.8125rem; }
+.expedition .expedition-crew p { margin: 4px 0 0; color: var(--t2); font-size: 0.8125rem; line-height: 1.4; }
+.expedition .expedition-crew li.is-active small { color: var(--sun); }
+.expedition .expedition-crew .expedition-crew__where { color: var(--t1); }
+
+.expedition .expedition-crew button {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  margin-top: 8px;
+  padding: 0 12px;
+  border: 1px solid var(--line-2);
+  border-radius: 10px;
+  background: var(--raise);
+  color: var(--t1);
+  font: 500 0.8125rem/1 inherit;
+  cursor: pointer;
+}
+
+.expedition .expedition-crew button:hover,
+.expedition .expedition-crew button:focus-visible { background: var(--raise-2); border-color: var(--t3); }
+
+@media (max-width: 600px) {
+  .expedition .expedition-crew { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .expedition .expedition-crew li > div { padding: 10px; }
+}
+
+/* ---- Surface map ground: tiles at fixed zoom levels (SurfaceMap.tsx useTerrainTiles) ---- */
+.expedition .surface-map__tiles {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  background: #0d1117;
+}
+
+.expedition .surface-map__tile {
+  position: absolute;
+  display: block;
+  pointer-events: none;
+}
+
+/* A colonist of Haven speaking: the subtitle, their name where ARGO's would be. */
+.expedition .expedition-argo.is-person b { color: var(--t1); }
+
+/* ---- The Story tab: Earth's recovery, and the Seeds brought home ---- */
+.expedition .expedition-earth {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line-2);
+  background: var(--raise-2);
+}
+.expedition .expedition-earth header { display: flex; align-items: end; justify-content: space-between; gap: 12px; }
+.expedition .expedition-earth header span { display: grid; gap: 2px; }
+.expedition .expedition-earth header small { color: var(--t3); font-weight: 500; }
+.expedition .expedition-earth header b { font-size: 1rem; font-weight: 600; }
+.expedition .expedition-earth header em { color: var(--t2); font-style: normal; font-weight: 600; font-variant-numeric: tabular-nums; }
+.expedition .expedition-earth__bar {
+  display: block;
+  height: 8px;
+  background: linear-gradient(90deg, var(--sun) var(--fill), rgba(255, 255, 255, 0.14) var(--fill));
+  -webkit-mask: repeating-linear-gradient(90deg, #000 0 calc(10% - 3px), transparent calc(10% - 3px) 10%);
+  mask: repeating-linear-gradient(90deg, #000 0 calc(10% - 3px), transparent calc(10% - 3px) 10%);
+}
+.expedition .expedition-earth p { margin: 0; color: var(--t2); font-size: 0.8125rem; line-height: 1.5; }
+.expedition .expedition-earth__seeds { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.expedition .expedition-earth__seeds li {
+  padding: 4px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--line-2);
+  color: var(--t3);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+.expedition .expedition-earth__seeds li.is-met { border-color: var(--sun); color: var(--sun); }
+.expedition .expedition-earth__prologue {
+  justify-self: start;
+  padding: 6px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--t2);
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+/* ---- The prologue: the key art over a short card, once for a new player ---- */
+.expedition .expedition-prologue {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  background: rgba(4, 7, 10, 0.62);
+  pointer-events: auto;
+}
+.expedition .expedition-prologue article {
+  width: min(640px, 100%);
+  max-height: 100%;
+  overflow: auto;
+  border-radius: 24px;
+  border: 1px solid var(--line-2);
+  background: rgba(14, 18, 24, 0.82);
+  -webkit-backdrop-filter: blur(24px) saturate(1.3);
+  backdrop-filter: blur(24px) saturate(1.3);
+}
+.expedition .expedition-prologue img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
+.expedition .expedition-prologue article > div { display: grid; gap: 10px; padding: 18px 22px 22px; }
+.expedition .expedition-prologue small { color: var(--sun); font-size: 0.8125rem; font-weight: 500; }
+.expedition .expedition-prologue h2 { margin: 0; font-size: 1.75rem; font-weight: 600; letter-spacing: -0.01em; text-wrap: balance; }
+.expedition .expedition-prologue p { margin: 0; color: var(--t2); font-size: 0.875rem; line-height: 1.55; }
+.expedition .expedition-prologue p:last-of-type { color: var(--t1); font-weight: 500; }
+.expedition .expedition-prologue button {
+  justify-self: start;
+  margin-top: 4px;
+  padding: 10px 22px;
+  border-radius: 999px;
+  background: var(--sun);
+  color: #1b1408;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+/* Phones sideways: the picture beside the words, so all of it fits. */
+@media (max-height: 500px) and (min-width: 560px) {
+  .expedition .expedition-prologue article { display: grid; grid-template-columns: 42% 1fr; width: min(860px, 100%); }
+  .expedition .expedition-prologue img { height: 100%; aspect-ratio: auto; }
+  .expedition .expedition-prologue h2 { font-size: 1.25rem; }
+}
+
+/* ---- Settings: the tabs, and Sound's levels ---- */
+.expedition .expedition-settings__tabs { margin-bottom: 14px; }
+.expedition .expedition-settings__tabs button[aria-selected="true"] { background: var(--raise-2); color: var(--t1); }
+.expedition .expedition-sound__switches { display: flex; flex-wrap: wrap; gap: 8px; }
+.expedition .expedition-sound__switches button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid var(--line-2);
+  background: var(--raise);
+  color: var(--t2);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+.expedition .expedition-sound__switches button[aria-pressed="true"] { color: var(--t1); background: var(--raise-2); }
+.expedition .expedition-sound__list { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.expedition .expedition-sound__list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 200px) 3.2em auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--raise);
+}
+.expedition .expedition-sound__list label { display: grid; gap: 2px; min-width: 0; }
+.expedition .expedition-sound__list label b { font-size: 0.875rem; font-weight: 600; color: var(--t1); }
+.expedition .expedition-sound__list label span { font-size: 0.75rem; color: var(--t3); }
+.expedition .expedition-sound__list input[type="range"] { width: 100%; accent-color: var(--t1); }
+.expedition .expedition-sound__list output { font-size: 0.8125rem; color: var(--t2); font-variant-numeric: tabular-nums; text-align: right; }
+.expedition .expedition-sound__list li button {
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--t2);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.expedition .expedition-sound__list li.is-off label b,
+.expedition .expedition-sound__list li.is-off output { color: var(--t3); }
+/* Narrow screens: the slider under the name, the switch beside the level. */
+@media (max-width: 560px) {
+  .expedition .expedition-sound__list li { grid-template-columns: minmax(0, 1fr) auto auto; }
+  .expedition .expedition-sound__list label { grid-column: 1 / -1; }
+}
+

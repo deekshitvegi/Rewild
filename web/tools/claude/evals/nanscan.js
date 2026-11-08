@@ -1,0 +1,1 @@
+(() => { const t = window.__three; const bad = []; t.scene.traverse((o) => { o.updateMatrixWorld(); if (!o.matrixWorld.elements.every(Number.isFinite)) bad.push(o.type + ':' + (o.name || o.id)); }); return bad.slice(0, 10); })()

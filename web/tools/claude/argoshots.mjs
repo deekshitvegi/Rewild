@@ -1,0 +1,53 @@
+// Usage: PORT=4187 node argoshots.mjs <outdir> : the Argo from the ground, and flying her.
+import { chromium } from '/opt/node-tools/node_modules/playwright/index.mjs';
+const [,, out] = process.argv;
+const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--enable-webgl'] });
+const page = await (await browser.newContext({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 })).newPage();
+const logs = [];
+page.on('pageerror', (e) => logs.push('pageerror: ' + e.message));
+await page.goto(`http://127.0.0.1:${process.env.PORT || 4187}/lab/fly-lab.html?start=projects&landed=1`, { waitUntil: 'load', timeout: 90000 });
+await page.waitForFunction(() => !!window.__expedition && !!window.__three && !!window.__expedition.runtime.hud.ship, null, { timeout: 180000, polling: 500 });
+await page.evaluate(() => { window.__fc = 0; const loop = () => { window.__fc++; requestAnimationFrame(loop); }; requestAnimationFrame(loop); });
+const frames = (n) => page.evaluate(async (n) => { const f0 = window.__fc; while (window.__fc < f0 + n) await new Promise((r) => setTimeout(r, 100)); }, n);
+await frames(30);
+await page.evaluate(() => window.__expedition.input.pressed.add('KeyE'));
+await frames(30);
+const look = await page.evaluate(() => {
+  const e = window.__expedition; const r = e.runtime; const w = r.hud.walker; const h = r.mothership;
+  if (!w) return 'not on foot';
+  const V = w.position.constructor;
+  const argo = h.ship.position.clone().add(h.home.position);
+  const up = w.position.clone().sub(w.body.position).normalize();
+  const to = argo.clone().sub(w.position);
+  const flat = to.clone().addScaledVector(up, -to.dot(up));
+  // Step back along the ground so she is not straight overhead.
+  const away = flat.lengthSq() > 1 ? flat.clone().normalize().negate() : new V(1, 0, 0).cross(up).normalize();
+  const dir = w.position.clone().sub(w.body.position).normalize().multiplyScalar(w.body.radius).addScaledVector(away, 2600).normalize();
+  w.position.copy(w.body.position).addScaledVector(dir, w.body.radius + e.groundHeight(w.body, dir) + 0.2);
+  const up2 = dir;
+  const to2 = argo.clone().sub(w.position);
+  const flat2 = to2.clone().addScaledVector(up2, -to2.dot(up2)).normalize();
+  w.facing.copy(flat2); w.look.copy(flat2);
+  w.pitch = Math.atan2(to2.dot(up2), to2.clone().addScaledVector(up2, -to2.dot(up2)).length()) * 0.9;
+  return 'pitch ' + w.pitch.toFixed(2);
+});
+console.log(look);
+await frames(25);
+await page.screenshot({ path: `${out}/ground-up.png`, timeout: 600000 });
+await page.evaluate(() => {
+  const e = window.__expedition; const r = e.runtime; const h = r.mothership; const ship = r.player.ship;
+  const V = ship.position.constructor;
+  const p = h.ship.position.clone().add(h.home.position); const q = h.ship.quaternion.clone();
+  const fwd = new V(0, 0, -1).applyQuaternion(q);
+  const bay = new V(0, 0, -166).applyQuaternion(q).add(p);
+  r.actions.place(bay.clone().addScaledVector(fwd, 100), fwd.clone().negate(), 0, new V(0, 1, 0).applyQuaternion(q));
+  ship.velocity.set(0, 0, 0); ship.throttle = 0;
+});
+await frames(15);
+await page.evaluate(() => window.__expedition.input.pressed.add('KeyU'));
+await frames(70);
+await page.keyboard.down('KeyW'); await frames(20); await page.keyboard.up('KeyW');
+await frames(20);
+await page.screenshot({ path: `${out}/flying-argo.png`, timeout: 600000 });
+console.log('docked', await page.evaluate(() => window.__expedition.runtime.mothership.docked), 'logs:', logs.join(' | '));
+await browser.close();

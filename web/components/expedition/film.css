@@ -1,0 +1,129 @@
+/* ---- The loading films (FilmPlayer.tsx): over the whole screen, on the home page and in the game ---- */
+.rewild-film {
+  position: fixed;
+  inset: 0;
+  z-index: 1400;
+  overflow: hidden;
+  background: #000;
+  color: #f4f1ec;
+  font-family: var(--font-ui, "Inter Variable", Inter, system-ui, sans-serif);
+  animation: rewild-film-in 450ms ease-out both;
+}
+.rewild-film.is-closing {
+  opacity: 0;
+  transition: opacity 700ms ease-in-out;
+}
+@keyframes rewild-film-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.rewild-film__video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.rewild-film__shade {
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 34%;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0));
+  pointer-events: none;
+}
+.rewild-film__caption {
+  position: absolute;
+  left: 50%;
+  bottom: calc(max(20px, env(safe-area-inset-bottom)) + 92px);
+  width: min(720px, calc(100vw - 32px));
+  margin: 0;
+  transform: translateX(-50%);
+  text-align: center;
+  font-size: 1.0625rem;
+  font-weight: 500;
+  line-height: 1.45;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 0 18px rgba(0, 0, 0, 0.6);
+  text-wrap: balance;
+}
+.rewild-film__caption b {
+  margin-right: 6px;
+  color: #ffb547;
+  font-weight: 600;
+}
+.rewild-film__footer {
+  position: absolute;
+  left: max(24px, env(safe-area-inset-left));
+  right: max(24px, env(safe-area-inset-right));
+  bottom: max(20px, env(safe-area-inset-bottom));
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: 10px 16px;
+}
+.rewild-film__status { min-width: 0; }
+.rewild-film__title {
+  margin: 0 0 2px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+.rewild-film__detail {
+  margin: 0;
+  color: rgba(244, 241, 236, 0.72);
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+.rewild-film__percent {
+  color: rgba(244, 241, 236, 0.72);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+.rewild-film__skip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px 8px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(18, 20, 26, 0.55);
+  -webkit-backdrop-filter: blur(18px) saturate(1.6);
+  backdrop-filter: blur(18px) saturate(1.6);
+  color: #f4f1ec;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.rewild-film__skip:hover { background: rgba(28, 31, 40, 0.7); }
+.rewild-film__skip:focus-visible { outline: 2px solid #ffb547; outline-offset: 2px; }
+.rewild-film__skip kbd {
+  padding: 2px 6px;
+  border-radius: 5px;
+  background: rgba(255, 181, 71, 0.9);
+  color: #1a1206;
+  font: 600 0.75rem/1.2 inherit;
+}
+.rewild-film__bar {
+  grid-column: 1 / -1;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.16);
+  overflow: hidden;
+}
+.rewild-film__bar span {
+  display: block;
+  height: 100%;
+  background: #ffb547;
+  transform-origin: left center;
+  transition: transform 300ms ease-out;
+}
+@media (hover: none) {
+  .rewild-film__skip kbd { display: none; }
+}
+@media (max-width: 600px) {
+  .rewild-film__caption { font-size: 0.9375rem; bottom: calc(max(16px, env(safe-area-inset-bottom)) + 84px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rewild-film, .rewild-film.is-closing { animation: none; transition-duration: 1ms; }
+}
+.rewild-film.is-card { background: #02030a; }
+.rewild-film__preload { display: none; }
