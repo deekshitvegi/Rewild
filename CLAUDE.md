@@ -57,6 +57,32 @@ click; do the rest yourself.
    Git Bash once on the PC); they include game-feel, camera-systems, input-systems, game-ai,
    ai-behavior-trees-utility-ai, rpg, survival-crafting, level-design, performance-optimization, steam-publish.
 
+## The PC (checked 8 Nov 2026)
+
+- **Unreal Engine 5.8.2** (Epic Games Launcher) at `D:\Unreal\UE_5.8`. D: is an external Seagate One Touch with a
+  password: if `D:\` is missing, ask the owner to plug it in and unlock it. The Launcher itself lives on D: too.
+- **Visual Studio Build Tools 2022** 17.14 (MSVC 14.44.35228, Windows SDK 10.0.26100), not the full Visual Studio
+  app. Enough for Unreal: everything is built from the command line.
+- RTX 3070 (8 GB), 8 cores / 16 threads. C: has about 120 GB free; D: about 680 GB.
+- Build the editor: `"D:\Unreal\UE_5.8\Engine\Build\BatchFiles\Build.bat" RewildEditor Win64 Development
+  "-Project=<repo>\Unreal\Rewild\Rewild.uproject" -WaitMutex` (run it from PowerShell; Git Bash mangles the quotes).
+- Test shots: `UnrealEditor.exe <repo>\Unreal\Rewild\Rewild.uproject -ExecutePythonScript="<abs path to script>"
+  -ini:EditorSettings:[/Script/UnrealEd.EditorPerformanceSettings]:bThrottleCPUWhenNotForeground=False`.
+  `Unreal/Rewild/Scripts/test_shot.py` is the example (builds /Game/Dev/TestShot, takes HighResShots, quits); shots
+  land in `Unreal/Rewild/Saved/Screenshots/WindowsEditor/`. A full run takes about a minute.
+- Driving the editor from Python (each learned the hard way on 8 Nov):
+  - Without the `-ini:` override the editor stops drawing whenever another window (the Claude app) is in front,
+    and a HighResShot waits forever. Use `Start-Process ... -PassThru` and a time limit, and close it if stuck.
+  - `-ExecutePythonScript` closes the editor as soon as the script returns: call
+    `unreal.EditorPythonScripting.set_keep_python_script_alive(True)` for work over several frames, and set it back
+    to False on every exit path, or the editor stays open for good.
+  - Never change levels inside a per-frame (Slate tick) callback: a level change ticks Slate and calls it again
+    mid-change; two nested NewLevel calls left a world in memory and the editor stopped with a fatal error.
+  - After taking shots the editor exits with an access violation once its log is closed. Everything is saved by
+    then and no crash report is written; harmless so far, look into it if it starts losing work.
+
+## The owner's rules (all still hold)
+
 ## The owner's rules (all still hold)
 
 - **Show, don't tell.** The owner is not a programmer; they judge by playing and by screenshots and videos. Render
@@ -114,3 +140,6 @@ click; do the rest yourself.
 
 - 8 Nov 2026: repo created; web version, art sources and docs copied from the portfolio repo (its main at 42e1344);
   game design v1 (docs/design/GAME_DESIGN.md).
+- 8 Nov 2026: first session on the PC (PLAN.md step 1). The C++ project `Unreal/Rewild` on Unreal 5.8.2 builds; the
+  first test shots from the engine (Sky Atmosphere and Volumetric Cloud only, no ground yet):
+  docs/images/unreal-test-shot-golden-hour.jpg and docs/images/unreal-test-shot-orbit.jpg.
