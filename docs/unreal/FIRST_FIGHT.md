@@ -18,6 +18,8 @@ play) before the next one starts, and committed.
 - **The fighter:** the web version's shape (the owner chose "keep shape, rebuild"): long pointed nose, swept wings
   with canted fins, twin engine pods, white with red stripes. Rebuilt properly at real size (about 16 m long), with
   the canopy of the approved glass-forward cockpit (docs/cockpit-concepts/cockpit-approved-glass-forward.png).
+  The owner chose canopy B: the deck in front of the windscreen lowered so the glass reaches 19 deg below eye level.
+  Built by art/fighter/make_fighter.py (Blender, 180k triangles, panel lines as real grooves, AO and cavity maps).
 - **Big generated files stay out of git:** the NASA downloads and the Earth textures made from them are rebuilt on
   each PC by `Unreal/Rewild/Scripts/earth/` (too big for GitHub's file storage).
 

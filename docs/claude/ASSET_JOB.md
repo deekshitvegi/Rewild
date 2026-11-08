@@ -90,3 +90,14 @@ on 4 cores made every frame take 7 minutes).
   and at 2,500 km shadowed everything: off until the terminator work (8 Nov, Unreal).
 - Clouds: a remap of full cover stays full (flat white sheets with stepped pixel edges); Unreal's default of 0
   multiple-scattering octaves leaves them grey-beige; 2.5 km detail noise at 0.3 read as sandpaper (8 Nov, Unreal).
+- Fighter (8 Nov, art/fighter): measure the reference's sections, not only its views: the old wing was 12% thick
+  with a flat underside, not a 5% blade; fixing it took the front-view silhouette overlap from 0.76 to 0.90.
+- All three reference angles looked from above and missed that the old underside is all grey: always render the belly.
+- Blender's Manifold boolean silently does nothing when one operand is non-manifold: log face counts before and after.
+- A windscreen drawn as one raked plane let its pillars drift from 37 to 50 deg and left the header at +18 deg, in
+  view: build the pillars on the vertical sight planes through the eye (+-40 deg), the header above +30 deg.
+- An interior concept can contradict the exterior: with the old nose line the glass ended 7 deg below eye level where
+  the approved cockpit shows 20 deg. Check sight lines against the hull before approving either (lowered 0.5 m, B).
+- 12 mm panel grooves vanish under flat paint at chase distance; a 4,096 px cavity mask (bakes in 15 s) makes them read.
+- UV use stayed at 39-46% with about 4,800 islands, most of them groove walls: unwrap before the booleans when texel
+  density matters, and measure UV area directly (counting baked texels said 58%).
