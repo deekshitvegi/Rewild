@@ -397,8 +397,10 @@ def cloud_instance(mat, rot):
 
 def planet_mesh(instances):
     mesh = import_file("SM_Planet.fbx", "SM_Planet")
+    # Not Nanite: in play, with the camera banking and moving, Nanite drew part of Earth as a flat slab jutting
+    # above the limb (8 Nov 2026); it is not built for one mesh 6,371 km across. 262k plain triangles are cheap.
     nanite = mesh.get_editor_property("nanite_settings")
-    nanite.enabled = True
+    nanite.enabled = False
     mesh.set_editor_property("nanite_settings", nanite)
     slots = [str(m.get_editor_property("material_slot_name")) for m in mesh.get_editor_property("static_materials")]
     shots.log(f"planet slots {slots}")
@@ -438,19 +440,20 @@ def spawn(cls, loc=unreal.Vector(0, 0, 0), rot=unreal.Rotator(0, 0, 0), label=No
     return a
 
 
-def open_level():
+def open_level(level=LEVEL, tag=TAG):
+    """Open `level` (made if missing) and remove every actor an earlier run of a script tagged `tag`."""
     current = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world()
-    if current and current.get_path_name().startswith(LEVEL + "."):
+    if current and current.get_path_name().startswith(level + "."):
         pass
-    elif assets.does_asset_exist(LEVEL):
-        levels.load_level(LEVEL)
-    elif not levels.new_level(LEVEL):
+    elif assets.does_asset_exist(level):
+        levels.load_level(level)
+    elif not levels.new_level(level):
         if not unreal.EditorLoadingAndSavingUtils.save_map(
-            unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world(), LEVEL
+            unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world(), level
         ):
-            raise RuntimeError("could not make " + LEVEL)
+            raise RuntimeError("could not make " + level)
     for a in actors.get_all_level_actors():
-        if TAG in [str(t) for t in a.get_editor_property("tags")]:
+        if tag in [str(t) for t in a.get_editor_property("tags")]:
             actors.destroy_actor(a)
 
 
@@ -466,9 +469,8 @@ def set_cloud(cc, cloud_mat):
         cc.set_editor_property(k, v)
 
 
-def build_level(mesh, radius, cloud_mat):
-    open_level()
-
+def earth_stack(mesh, radius, cloud_mat):
+    """Earth, its atmosphere, the Sun, the clouds, the sky light and the exposure, into the open level."""
     earth = spawn(unreal.StaticMeshActor, CENTRE, frame_at(*BELOW), "Earth")
     smc = earth.static_mesh_component
     smc.set_static_mesh(mesh)
@@ -502,9 +504,14 @@ def build_level(mesh, radius, cloud_mat):
         clouds = spawn(unreal.VolumetricCloud, label="Clouds")
         set_cloud(clouds.get_component_by_class(unreal.VolumetricCloudComponent), cloud_mat)
 
+    # Earthshine: from low orbit Earth fills half the sky and lights everything from below. With the sky light's lower
+    # half black, the fighter's shadowed side vanished into space (first fighter stills, 8 Nov 2026). The real-time
+    # capture sees the atmosphere's ground, given Earth's average reflectance (about 30%, a little blue).
+    sc.set_editor_property("ground_albedo", unreal.Color(r=148, g=152, b=158, a=255))  # sRGB, about 0.3 linear
     skylight = spawn(unreal.SkyLight, label="Sky light")
     skylight.root_component.set_mobility(unreal.ComponentMobility.MOVABLE)
     skylight.light_component.set_editor_property("real_time_capture", True)
+    skylight.light_component.set_editor_property("lower_hemisphere_is_black", False)
 
     ppv = spawn(unreal.PostProcessVolume, label="Exposure")
     ppv.set_editor_property("unbound", True)
@@ -524,6 +531,11 @@ def build_level(mesh, radius, cloud_mat):
         s.set_editor_property("override_" + k, True)
         s.set_editor_property(k, v)
     ppv.set_editor_property("settings", s)
+
+
+def build_level(mesh, radius, cloud_mat):
+    open_level()
+    earth_stack(mesh, radius, cloud_mat)
 
     cams = []
     for name, az, pitch, fov in STILLS:
@@ -563,17 +575,22 @@ def atmosphere_ab(cams):
     ]
 
 
-shots.start()
-try:
+def prepare_assets():
+    """Import or reuse Earth's textures, materials, mesh and clouds. Returns (mesh, radius, cloud material)."""
     tile_textures, mask_textures = textures()
     mesh, radius = planet_mesh(material(tile_textures, mask_textures))
     clouds_mat = cloud_instance(cloud_material(mask_textures["Clouds"]), frame_at(*BELOW))
-    # A Volumetric Cloud given a material whose shaders are still compiling draws the default surface material
-    # and the renderer asserts (crashed 8 Nov 2026): finish every compile before the cloud exists.
+    # Finish every shader compile before anything draws the new materials.
     unreal.AutomationLibrary.finish_loading_before_screenshot()
-    cams = build_level(mesh, radius, clouds_mat)
-    if "--ab" in sys.argv or os.environ.get("REWILD_AB"):
-        cams = atmosphere_ab(cams)
-    shots.take_shots(cams, settle=8.0)
-except Exception as e:
-    shots.fail(e)
+    return mesh, radius, clouds_mat
+
+
+if __name__ == "__main__":  # run by -ExecutePythonScript; other scripts import the functions above
+    shots.start()
+    try:
+        cams = build_level(*prepare_assets())
+        if "--ab" in sys.argv or os.environ.get("REWILD_AB"):
+            cams = atmosphere_ab(cams)
+        shots.take_shots(cams, settle=8.0)
+    except Exception as e:
+        shots.fail(e)
