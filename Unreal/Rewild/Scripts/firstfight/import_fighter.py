@@ -44,13 +44,14 @@ def reimport():
     return bool(os.environ.get("REWILD_REIMPORT"))
 
 
-def import_file(path, name=None):
-    target = f"{DEST}/{name}" if name else None
+def import_file(path, name=None, dest=None):
+    dest = dest or DEST
+    target = f"{dest}/{name}" if name else None
     if target and assets.does_asset_exist(target) and not reimport():
         return [target]
     task = unreal.AssetImportTask()
     task.filename = path
-    task.destination_path = DEST
+    task.destination_path = dest
     if name:
         task.destination_name = name
     task.automated = True
@@ -62,8 +63,8 @@ def import_file(path, name=None):
     return paths
 
 
-def mask_texture(name):
-    path = import_file(os.path.join(EXPORT, "textures", f"{name}.png"), name)[0]
+def mask_texture(name, dest=None, export=None):
+    path = import_file(os.path.join(export or EXPORT, "textures", f"{name}.png"), name, dest)[0]
     tex = unreal.load_asset(path)
     tex.set_editor_property("srgb", False)
     tex.set_editor_property("compression_settings", unreal.TextureCompressionSettings.TC_GRAYSCALE)
@@ -71,11 +72,12 @@ def mask_texture(name):
     return tex
 
 
-def fresh_material(name):
-    path = f"{DEST}/{name}"
+def fresh_material(name, dest=None):
+    dest = dest or DEST
+    path = f"{dest}/{name}"
     if assets.does_asset_exist(path):
         assets.delete_asset(path)
-    return tools.create_asset(name, DEST, unreal.Material, unreal.MaterialFactoryNew())
+    return tools.create_asset(name, dest, unreal.Material, unreal.MaterialFactoryNew())
 
 
 def param(mat, cls, name, x, y, value=None):
@@ -104,8 +106,9 @@ def link(a, a_pin, b, b_pin):
     mel.connect_material_expressions(a, a_pin, b, b_pin)
 
 
-def paint_material(ao_tex, cavity_tex):
-    mat = fresh_material("M_FighterPaint")
+def paint_material(ao_tex, cavity_tex, name="M_FighterPaint", dest=None):
+    """Also the practice drone's paint (import_drone.py), with its own maps."""
+    mat = fresh_material(name, dest)
     mat.set_editor_property("used_with_instanced_static_meshes", True)  # explosion shards use the dark metal
     colour = param(mat, unreal.MaterialExpressionVectorParameter, "Colour", -900, -200, unreal.LinearColor(0.7, 0.7, 0.68, 1))
     rough = param(mat, unreal.MaterialExpressionScalarParameter, "Roughness", -900, 200, 0.35)
@@ -188,12 +191,13 @@ def engine_material():
     return mat
 
 
-def paint_instance(parent, slot, colour, rough, metal):
-    name = "MI_Fighter_" + slot.split("_", 1)[1]
-    path = f"{DEST}/{name}"
+def paint_instance(parent, slot, colour, rough, metal, prefix="MI_Fighter_", dest=None):
+    dest = dest or DEST
+    name = prefix + slot.split("_", 1)[1]
+    path = f"{dest}/{name}"
     if assets.does_asset_exist(path):
         assets.delete_asset(path)
-    mi = tools.create_asset(name, DEST, unreal.MaterialInstanceConstant, unreal.MaterialInstanceConstantFactoryNew())
+    mi = tools.create_asset(name, dest, unreal.MaterialInstanceConstant, unreal.MaterialInstanceConstantFactoryNew())
     mel.set_material_instance_parent(mi, parent)
     mel.set_material_instance_vector_parameter_value(mi, "Colour", unreal.LinearColor(*colour, 1.0))
     mel.set_material_instance_scalar_parameter_value(mi, "Roughness", rough)
