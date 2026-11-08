@@ -98,8 +98,11 @@ click; do the rest yourself.
   `git -c user.name="Deekshitth Vegi" -c user.email="65802453+deekshitvegi@users.noreply.github.com" commit ...`
 - **ASSET_JOB.md for every model, place and film:** reference, numbered checklist with numbers, still loop graded
   against the reference, measure don't eyeball, show the owner the still before a film. At most 2 builds at once.
-- **Build models ourselves** (Blender from code, or Unreal), from real references and real proportions, with scanned
-  materials (Megascans/Fab, Poly Haven CC0). Higgsfield 3D models read as AI slop; Higgsfield only for concept art.
+- **Build models ourselves**, from real references and real proportions, with scanned materials (Megascans/Fab, Poly
+  Haven CC0), in whatever tool gives the best result: Blender from code, Unreal's modelling tools, scanned or kitbash
+  parts from Fab (owner, 8 Nov: "not just blender rebuild where ever you feel will be the best"). Higgsfield 3D models
+  read as AI slop; Higgsfield only for concept art. Every model from the web version is Higgsfield/Tripo except the
+  trees and food plants: rebuild them, never import them as they are (the astronaut is the one exception, below).
   The Higgsfield films were disliked: films are made in the engine, from a script.
 - **The astronaut model stays** (`astronaut.glb` and its skeleton; only motions are added). The one exception: on
   the Garden (the magical world near TON 618) the explorer becomes a cloaked wanderer with gold-white rim light.

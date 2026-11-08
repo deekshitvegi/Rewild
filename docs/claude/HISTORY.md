@@ -188,6 +188,12 @@ low altitude; no combat code at all; chapters are go-to-marker cards). Answers: 
 space war = **dogfights, capital ship battles, boarding, ground battles**; **the war is the main story**.
 Plan: docs/unreal/PLAN.md.
 
+**8 Nov (Rewild repo, first session on the PC).** "Clone https://github.com/deekshitvegi/Rewild into this folder,
+then read its CLAUDE.md and do the first-session checklist." Done: Unreal 5.8.2 found on the D: drive (an external
+Seagate the user plugs in: "i didnt plug in the d driev let me do it now"), the C++ project built, first test shots
+(docs/images/unreal-test-shot-*.jpg). Then "Start the first fight" (PLAN.md step 2). On rebuilding the web
+version's Higgsfield fighter: "not just bender rebuild where ever you feel will be the best".
+
 ## Answers the user gave to Claude's questions
 - HUD: liked Cockpit and Game glass, then chose **F: glass with instruments**.
 - Earth size: **real size** (scale-up planned, docs/real-scale.md).
