@@ -116,3 +116,11 @@ on 4 cores made every frame take 7 minutes).
   default grey material (8 Nov).
 - The autopilot never hit until it stopped using the player's stick dead zone and fired only within the target's
   angular size: test aim code with a bot before judging hit feedback (8 Nov).
+- The chase camera sees a target mostly from behind: a drone painted orange only at the front read 70% white and gold
+  there. Measure colour shares from the chase view with flat-colour renders, not from the hero view (8 Nov).
+- Gold foil shaded flat on a square grid read as pixels; a jittered triangle grid with 15-25 deg facets reads as foil,
+  but smoothing above about 6 deg turned it to smudges (8 Nov).
+- Unwrap before cutting debris, so the fragments keep the whole model's UVs and maps; make tanks hollow, or a cut
+  shows a solid black cross-section (8 Nov).
+- Stills levels are shared: clear every other model's stills actors before shooting (the drone's first close-ups
+  showed the fighter parked on the same spot) (8 Nov).

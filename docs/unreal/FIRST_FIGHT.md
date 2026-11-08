@@ -101,8 +101,13 @@ shoot pale blue training bolts back. Each respawns 6 s after it dies; so do you,
   Materials: `Scripts/firstfight/make_fx.py` (`make_fx_only.py` remakes just those, fast).
 - `-RewildDemo` now hunts the drones on autopilot and takes shots at each kill: three kills in about 23 s.
 
-Open: the drone model (a placeholder sphere until the rebuilt one is imported); the fireball's edge shows a little
-stepping up close; sound; then milestone 4, the Harrow.
+- The drones: `art/drone/make_drone.py` builds the practice drone in Blender from code (an orange and white target
+  drone after the BQM-167, with gold insulation blankets, thruster pods, a turret and antennas; 12 torn fragments
+  for its explosion); `Scripts/firstfight/import_drone.py` brings it into the game. Stills:
+  docs/images/first-fight-drone.jpg and first-fight-drone-apart.jpg.
+
+Open: the fireball's edge shows a little stepping up close; decals and markings on the drone; sound; then milestone
+4, the Harrow.
 
 ## Milestones
 
