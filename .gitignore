@@ -1,0 +1,17 @@
+# Unreal Engine: generated on every machine, never committed
+Unreal/**/Binaries/
+Unreal/**/Intermediate/
+Unreal/**/Saved/
+Unreal/**/DerivedDataCache/
+Unreal/**/.vs/
+Unreal/**/*.sln
+Unreal/**/*.VC.db
+# Web version and tools
+node_modules/
+dist/
+.vite/
+.env*
+!.env.example
+# Editors and OS
+.DS_Store
+Thumbs.db
