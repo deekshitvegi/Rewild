@@ -33,7 +33,9 @@ def finish(ok=True):
 
 
 def fail(e):
-    unreal.log_error("[rewild] " + repr(e))
+    import traceback
+
+    unreal.log_error("[rewild] " + repr(e) + "\n" + traceback.format_exc())
     finish(False)
 
 

@@ -14,6 +14,11 @@
   open sea is near black (about RGB 2, 5, 20) with faint steps that texture compression turns into blocks once the
   atmosphere lifts them, so the material paints deep water itself and keeps Blue Marble only over shelves and reefs.
 
+- T_Earth_Normal.png: 16,384 x 8,192 tangent-space normal map from GEBCO land elevation (2.4 km per pixel), so
+  mountains catch the sun. x points east, y south (Unreal's v runs north to south), relief exaggerated 3 times:
+  from orbit real relief reads through shadows far smaller than a 2.4 km pixel.
+- Earth_Clouds.png: the Solar System Scope cloud map (8,192 x 4,096) as one grey channel: where clouds form.
+
 Each output already present is skipped. A tile takes about a minute.
 """
 
@@ -84,6 +89,44 @@ def depth():
     print(f"made {dest.name}")
 
 
+METRES_PER_LEVEL = 35.0  # GEBCO's elevation picture: Everest reads 226, Tibet 188, the Sahara 29
+RELIEF = 3.0
+R_EARTH_M = 6_371_000.0
+
+
+def relief():
+    import numpy as np
+
+    dest = OUT / "T_Earth_Normal.png"
+    if dest.exists():
+        print(f"have {dest.name}")
+        return
+    w, h = 16384, 8192
+    img = Image.open(SRC / "gebco_08_rev_elev_21600x10800.jpg").convert("L").resize((w, h), Image.LANCZOS)
+    z = np.asarray(img, dtype=np.float32) * METRES_PER_LEVEL
+    px = 2 * np.pi * R_EARTH_M / w  # metres per pixel along the equator, and north-south everywhere
+    lat = (0.5 - (np.arange(h, dtype=np.float32) + 0.5) / h) * np.pi
+    dx = np.maximum(px * np.cos(lat), px * 0.01)[:, None]  # east-west pixels shrink toward the poles
+    east = (np.roll(z, -1, axis=1) - np.roll(z, 1, axis=1)) / (2 * dx)
+    south = (np.vstack([z[1:], z[-1:]]) - np.vstack([z[:1], z[:-1]])) / (2 * px)
+    del z
+    nx, ny = -east * RELIEF, -south * RELIEF  # a slope rising to the east faces west
+    del east, south
+    inv = 1.0 / np.sqrt(nx * nx + ny * ny + 1.0)
+    rgb = np.stack([nx * inv, ny * inv, inv], axis=-1) * 127.5 + 127.5
+    Image.fromarray(np.clip(rgb, 0, 255).astype(np.uint8), "RGB").save(dest)
+    print(f"made {dest.name}")
+
+
+def clouds():
+    dest = OUT / "Earth_Clouds.png"
+    if dest.exists():
+        print(f"have {dest.name}")
+        return
+    Image.open(SRC / "8k_earth_clouds.jpg").convert("L").save(dest, optimize=True)
+    print(f"made {dest.name}")
+
+
 if __name__ == "__main__":
     OUT.mkdir(parents=True, exist_ok=True)
     SMALL.mkdir(parents=True, exist_ok=True)
@@ -93,3 +136,5 @@ if __name__ == "__main__":
     if all((SMALL / f"{t}.png").exists() for t in TILES):
         water()
         depth()
+        relief()
+        clouds()

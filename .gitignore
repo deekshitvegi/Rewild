@@ -18,3 +18,4 @@ Thumbs.db
 # Big files rebuilt on each PC by scripts (NASA downloads and what is made from them)
 Unreal/**/RawSources/
 Unreal/Rewild/Content/Generated/
+__pycache__/
