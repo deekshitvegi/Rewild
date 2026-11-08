@@ -5,9 +5,10 @@
 #include "RewildHUD.generated.h"
 
 /**
- * For now only the aim reticle: a ring where the mouse cursor (the virtual stick) sits, and a small cross where
- * the nose points, in thin white at 70% opacity. The full HUD (direction F: frosted glass with instruments, one
- * amber accent) is its own job; none of the AI-looking furniture CLAUDE.md rules out.
+ * The fight's minimal HUD (first fight, milestone 3), thin lines only, no text: the nose cross and steering ring, a
+ * bracket on the target, an amber lead marker where to aim (amber is HUD direction F's one accent), shield and hull
+ * as arcs left and right of the reticle (amber when low), gun heat as an arc below, and a hit marker. The full HUD
+ * (direction F: frosted glass with instruments) is its own job; none of the AI-looking furniture CLAUDE.md rules out.
  */
 UCLASS()
 class REWILD_API ARewildHUD : public AHUD
@@ -19,4 +20,6 @@ public:
 
 private:
 	void Ring(const FVector2D& Centre, float Radius, const FLinearColor& Colour, float Thickness);
+	void Arc(const FVector2D& Centre, float Radius, float FromDeg, float ToDeg, const FLinearColor& Colour, float Thickness);
+	bool ToScreen(const FVector& World, FVector2D& Out) const;
 };

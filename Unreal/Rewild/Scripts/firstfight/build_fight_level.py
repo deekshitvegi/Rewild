@@ -9,11 +9,13 @@ import os
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.dirname(HERE))
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), "earth"))
 import unreal  # noqa: E402
 
 import build_earth as earth  # noqa: E402
+import make_fx  # noqa: E402
 import rewild_shots as shots  # noqa: E402
 
 LEVEL = "/Game/FirstFight/Maps/L_FirstFight"
@@ -21,10 +23,15 @@ START_HEADING = 300.0  # degrees from north: the Sun (azimuth 225) behind the le
 
 
 def build():
+    make_fx.make()
     mesh, radius, clouds = earth.prepare_assets()
     earth.open_level(LEVEL, earth.TAG)
     earth.earth_stack(mesh, radius, clouds)
-    earth.spawn(unreal.PlayerStart, unreal.Vector(0, 0, 0), unreal.Rotator(roll=0, pitch=0, yaw=START_HEADING), "Start")
+    heading = unreal.Rotator(roll=0, pitch=0, yaw=START_HEADING)
+    earth.spawn(unreal.PlayerStart, unreal.Vector(0, 0, 0), heading, "Start")
+    # The training range lays its drones out ahead of the start (milestone 3).
+    earth.spawn(unreal.load_class(None, "/Script/Rewild.RewildTrainingRange"), unreal.Vector(0, 0, 0), heading,
+                "Training range")
 
     world = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world()
     settings = world.get_world_settings()

@@ -3,6 +3,7 @@
 #include "Camera/CameraComponent.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "EngineUtils.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "Engine/LocalPlayer.h"
@@ -13,7 +14,12 @@
 #include "InputMappingContext.h"
 #include "InputModifiers.h"
 #include "Materials/MaterialInstanceDynamic.h"
+#include "Materials/MaterialInterface.h"
 #include "Misc/CommandLine.h"
+#include "RewildBolts.h"
+#include "RewildDrone.h"
+#include "RewildExplosion.h"
+#include "RewildHealthComponent.h"
 #include "UObject/ConstructorHelpers.h"
 
 namespace
@@ -21,9 +27,37 @@ namespace
 	constexpr int32 DustCount = 600;
 	constexpr float DustHalfBox = 6000.f;  // specks fill a 120 m box round the camera
 	constexpr float DustScale = 0.06f;     // 6 cm specks (the engine sphere is 1 m across)
+	constexpr float TargetCone = 35.f;     // degrees from the nose
+	constexpr float TargetRange = 250000.f;  // 2.5 km
+	constexpr float RespawnTime = 4.f;
 
 	const FName EngineSlot(TEXT("M_Engine_Glow"));
 	const FName EyeSocket(TEXT("Cockpit_Eye"));
+	const FName GunLeft(TEXT("Gun_L"));
+	const FName GunRight(TEXT("Gun_R"));
+
+	/** Time for a bolt (speed BoltSpeed, plus the shooter's velocity) to meet a target; false if it never can. */
+	bool SolveLead(const FVector& Offset, const FVector& RelativeVelocity, float BoltSpeed, float& OutTime)
+	{
+		const float A = RelativeVelocity.SizeSquared() - BoltSpeed * BoltSpeed;
+		const float B = 2.f * FVector::DotProduct(Offset, RelativeVelocity);
+		const float C = Offset.SizeSquared();
+		if (FMath::Abs(A) < 1e-3f)
+		{
+			OutTime = B < 0.f ? -C / B : -1.f;
+			return OutTime > 0.f;
+		}
+		const float Disc = B * B - 4.f * A * C;
+		if (Disc < 0.f)
+		{
+			return false;
+		}
+		const float Root = FMath::Sqrt(Disc);
+		const float T1 = (-B - Root) / (2.f * A);
+		const float T2 = (-B + Root) / (2.f * A);
+		OutTime = (T1 > 0.f && (T1 < T2 || T2 <= 0.f)) ? T1 : T2;
+		return OutTime > 0.f;
+	}
 }
 
 ARewildFighter::ARewildFighter()
@@ -32,20 +66,37 @@ ARewildFighter::ARewildFighter()
 
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> BodyMesh(TEXT("/Game/FirstFight/Fighter/Mesh/Fighter_Body.Fighter_Body"));
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> GlassMesh(TEXT("/Game/FirstFight/Fighter/Mesh/Fighter_CanopyGlass.Fighter_CanopyGlass"));
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> SpeckMesh(TEXT("/Engine/BasicShapes/Sphere.Sphere"));
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> SphereMesh(TEXT("/Engine/BasicShapes/Sphere.Sphere"));
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> ShieldMat(TEXT("/Game/FirstFight/FX/M_FX_Shield.M_FX_Shield"));
 
 	Hull = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Hull"));
 	SetRootComponent(Hull);
 	Hull->SetStaticMesh(BodyMesh.Object);
-	// No collision until there is something to hit (milestone 3). With the Pawn profile the game refused to spawn
-	// the fighter, reporting a collision at the start (8 Nov 2026); it now always spawns.
-	Hull->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	// Only bolts (visibility traces) touch the hull; the fighter always spawns (with a blocking profile the game
+	// refused to spawn it, 8 Nov 2026).
+	Hull->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	Hull->SetCollisionObjectType(ECC_Pawn);
+	Hull->SetCollisionResponseToAllChannels(ECR_Ignore);
+	Hull->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
 	SpawnCollisionHandlingMethod = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
 	Canopy = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Canopy"));
 	Canopy->SetupAttachment(Hull);
 	Canopy->SetStaticMesh(GlassMesh.Object);
 	Canopy->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	// The shield: an ellipsoid just clear of the hull (15.2 x 13.3 x 3.1 m), seen only as a flash where it is hit.
+	ShieldBubble = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ShieldBubble"));
+	ShieldBubble->SetupAttachment(Hull);
+	ShieldBubble->SetStaticMesh(SphereMesh.Object);
+	if (ShieldMat.Object)
+	{
+		ShieldBubble->SetMaterial(0, ShieldMat.Object);
+	}
+	ShieldBubble->SetRelativeScale3D(FVector(17.f, 15.f, 5.f));
+	ShieldBubble->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	ShieldBubble->SetCastShadow(false);
+	ShieldBubble->SetVisibility(false);
 
 	// Chase camera: 15.5 m back, looking 10 degrees down over the spine, lagging a little behind turns.
 	ChaseArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("ChaseArm"));
@@ -75,9 +126,14 @@ ARewildFighter::ARewildFighter()
 	Dust->SetUsingAbsoluteLocation(true);
 	Dust->SetUsingAbsoluteRotation(true);
 	Dust->SetUsingAbsoluteScale(true);
-	Dust->SetStaticMesh(SpeckMesh.Object);
+	Dust->SetStaticMesh(SphereMesh.Object);
 	Dust->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	Dust->SetCastShadow(false);
+
+	Health = CreateDefaultSubobject<URewildHealthComponent>(TEXT("Health"));
+	Health->ShieldMax = 100.f;
+	Health->HullMax = 100.f;
+	Health->Team = 0;
 
 	AutoPossessPlayer = EAutoReceiveInput::Player0;
 }
@@ -85,18 +141,19 @@ ARewildFighter::ARewildFighter()
 void ARewildFighter::BeginPlay()
 {
 	Super::BeginPlay();
+	Start = GetActorTransform();
 
 	// The eye socket gives the cockpit camera its place; it always looks along the hull.
 	if (Hull->DoesSocketExist(EyeSocket))
 	{
 		CockpitCamera->SetRelativeLocation(Hull->GetSocketTransform(EyeSocket, RTS_Component).GetLocation());
 	}
-
 	const int32 Slot = Hull->GetMaterialIndex(EngineSlot);
 	if (Slot != INDEX_NONE)
 	{
 		EngineGlow = Hull->CreateDynamicMaterialInstance(Slot);
 	}
+	ShieldMaterial = ShieldBubble->CreateDynamicMaterialInstance(0);
 
 	FRandomStream Random(1717);
 	DustOffsets.SetNum(DustCount);
@@ -109,6 +166,14 @@ void ARewildFighter::BeginPlay()
 	}
 	Dust->AddInstances(Instances, false, true);
 
+	Health->Restore();
+	Health->OnHit.AddUObject(this, &ARewildFighter::HandleHit);
+	Health->OnDeath.AddUObject(this, &ARewildFighter::HandleDeath);
+	if (URewildBolts* Bolts = GetWorld()->GetSubsystem<URewildBolts>())
+	{
+		Bolts->OnBoltHit.AddUObject(this, &ARewildFighter::HandleBoltHit);
+	}
+
 	BuildInput();
 	if (const APlayerController* PC = Cast<APlayerController>(GetController()))
 	{
@@ -120,6 +185,10 @@ void ARewildFighter::BeginPlay()
 
 	Velocity = GetActorForwardVector() * CruiseSpeedMax * Throttle * 100.f;
 	bDemo = FParse::Param(FCommandLine::Get(), TEXT("RewildDemo"));
+	if (bDemo)
+	{
+		DemoShotAt = {7.f, 16.f};  // a chase shot in the first attack, a cockpit shot later; kills add their own
+	}
 }
 
 void ARewildFighter::BuildInput()
@@ -151,18 +220,20 @@ void ARewildFighter::BuildInput()
 	RollAction = Action(TEXT("Roll"), EInputActionValueType::Axis1D);
 	Mapping->MapKey(RollAction, EKeys::D);
 	Negated(RollAction, EKeys::A);
-	Mapping->MapKey(RollAction, EKeys::Gamepad_RightShoulder);
-	Negated(RollAction, EKeys::Gamepad_LeftShoulder);
+	Mapping->MapKey(RollAction, EKeys::Gamepad_RightX);
 
 	ThrottleAction = Action(TEXT("Throttle"), EInputActionValueType::Axis1D);
 	Mapping->MapKey(ThrottleAction, EKeys::W);
 	Negated(ThrottleAction, EKeys::S);
-	Mapping->MapKey(ThrottleAction, EKeys::Gamepad_RightTriggerAxis);
-	Negated(ThrottleAction, EKeys::Gamepad_LeftTriggerAxis);
+	Mapping->MapKey(ThrottleAction, EKeys::Gamepad_RightY);
 
 	BoostAction = Action(TEXT("Boost"), EInputActionValueType::Boolean);
 	Mapping->MapKey(BoostAction, EKeys::LeftShift);
 	Mapping->MapKey(BoostAction, EKeys::Gamepad_FaceButton_Bottom);
+
+	FireAction = Action(TEXT("Fire"), EInputActionValueType::Boolean);
+	Mapping->MapKey(FireAction, EKeys::LeftMouseButton);
+	Mapping->MapKey(FireAction, EKeys::Gamepad_RightTrigger);
 
 	CameraAction = Action(TEXT("Camera"), EInputActionValueType::Boolean);
 	Mapping->MapKey(CameraAction, EKeys::C);
@@ -190,6 +261,8 @@ void ARewildFighter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 	Input->BindAction(ThrottleAction, ETriggerEvent::Completed, this, &ARewildFighter::OnThrottleReleased);
 	Input->BindAction(BoostAction, ETriggerEvent::Started, this, &ARewildFighter::OnBoost);
 	Input->BindAction(BoostAction, ETriggerEvent::Completed, this, &ARewildFighter::OnBoostReleased);
+	Input->BindAction(FireAction, ETriggerEvent::Started, this, &ARewildFighter::OnFire);
+	Input->BindAction(FireAction, ETriggerEvent::Completed, this, &ARewildFighter::OnFireReleased);
 	Input->BindAction(CameraAction, ETriggerEvent::Started, this, &ARewildFighter::OnCamera);
 	Input->BindAction(QuitAction, ETriggerEvent::Started, this, &ARewildFighter::OnQuit);
 }
@@ -211,6 +284,8 @@ void ARewildFighter::OnThrottle(const FInputActionValue& Value) { ThrottleInput 
 void ARewildFighter::OnThrottleReleased(const FInputActionValue&) { ThrottleInput = 0.f; }
 void ARewildFighter::OnBoost(const FInputActionValue&) { bBoostHeld = true; }
 void ARewildFighter::OnBoostReleased(const FInputActionValue&) { bBoostHeld = false; }
+void ARewildFighter::OnFire(const FInputActionValue&) { bFireHeld = true; }
+void ARewildFighter::OnFireReleased(const FInputActionValue&) { bFireHeld = false; }
 void ARewildFighter::OnCamera(const FInputActionValue&) { SetCockpitView(!bCockpitView); }
 
 void ARewildFighter::OnQuit(const FInputActionValue&)
@@ -231,22 +306,46 @@ void ARewildFighter::SetCockpitView(bool bCockpit)
 void ARewildFighter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+	const float Dt = FMath::Min(DeltaSeconds, 0.05f);
+	HitMarker = FMath::Max(0.f, HitMarker - Dt);
+	if (bDead)
+	{
+		AddActorWorldOffset(Velocity * Dt);  // the camera drifts on with the wreck
+		RespawnIn -= Dt;
+		if (RespawnIn <= 0.f)
+		{
+			Respawn();
+		}
+		UpdateDust();
+		return;
+	}
+	FindTarget();
 	if (bDemo)
 	{
-		TickDemo(DeltaSeconds);
+		TickDemo(Dt);
 	}
-	Fly(DeltaSeconds);
+	Fly(Dt);
+	TickGuns(Dt);
 	UpdateDust();
+
+	ShieldFlash = FMath::Max(0.f, ShieldFlash - Dt * 3.f);
+	ShieldBubble->SetVisibility(ShieldFlash > 0.01f);
+	if (ShieldMaterial)
+	{
+		ShieldMaterial->SetScalarParameterValue(TEXT("Strength"), ShieldFlash);
+	}
 }
 
-void ARewildFighter::Fly(float DeltaSeconds)
+void ARewildFighter::Fly(float Dt)
 {
-	const float Dt = FMath::Min(DeltaSeconds, 0.05f);
-
 	// The stick wins while it is held; otherwise the mouse cursor steers. A small dead zone round the centre.
-	FVector2D Steer = Stick.Size() > 0.1f ? Stick : AimCursor;
+	// The demo autopilot steers precisely, with no dead zone (one stopped it correcting errors under 1.4 degrees).
+	FVector2D Steer = bDemo ? Stick : (Stick.Size() > 0.1f ? Stick : AimCursor);
 	const float Magnitude = Steer.Size();
-	Steer = Magnitude < 0.05f ? FVector2D::ZeroVector : Steer * ((Magnitude - 0.05f) / (0.95f * Magnitude));
+	if (!bDemo)
+	{
+		Steer = Magnitude < 0.05f ? FVector2D::ZeroVector : Steer * ((Magnitude - 0.05f) / (0.95f * Magnitude));
+	}
 
 	const FRotator Turn(Steer.Y * PitchRate * Dt, Steer.X * YawRate * Dt, (RollInput * RollRate + Steer.X * BankIntoTurns) * Dt);
 	SetActorRotation(GetActorQuat() * FQuat(Turn));  // turn about the ship's own axes, never gimbal-locked
@@ -277,6 +376,77 @@ void ARewildFighter::Fly(float DeltaSeconds)
 	ChaseCamera->SetFieldOfView(70.f + 10.f * Fast);
 }
 
+void ARewildFighter::FindTarget()
+{
+	const FVector Here = GetActorLocation();
+	const FVector Nose = GetActorForwardVector();
+	AActor* Best = nullptr;
+	float BestAngle = TargetCone;
+	for (TActorIterator<ARewildDrone> It(GetWorld()); It; ++It)
+	{
+		if (!It->IsAlive())
+		{
+			continue;
+		}
+		const FVector To = It->GetActorLocation() - Here;
+		const float Distance = To.Size();
+		if (Distance > TargetRange)
+		{
+			continue;
+		}
+		const float Angle = FMath::RadiansToDegrees(FMath::Acos(FVector::DotProduct(Nose, To / FMath::Max(Distance, 1.f))));
+		if (Angle < BestAngle)
+		{
+			BestAngle = Angle;
+			Best = *It;
+		}
+	}
+	Target = Best;
+	bHasLead = false;
+	if (Best)
+	{
+		float Time = 0.f;
+		const FVector Offset = Best->GetActorLocation() - Here;
+		const FVector Relative = Best->GetVelocity() - Velocity;  // bolts carry the ship's velocity
+		if (SolveLead(Offset, Relative, GunSpeed * 100.f, Time))
+		{
+			LeadPoint = Here + Offset + Relative * Time;
+			bHasLead = true;
+		}
+	}
+}
+
+void ARewildFighter::TickGuns(float Dt)
+{
+	GunCooldown -= Dt;
+	GunHeat = FMath::Max(0.f, GunHeat - GunCoolRate * Dt);
+	if (bGunsOverheated && GunHeat < 0.35f)
+	{
+		bGunsOverheated = false;
+	}
+	URewildBolts* Bolts = GetWorld()->GetSubsystem<URewildBolts>();
+	while (bFireHeld && !bGunsOverheated && GunCooldown <= 0.f && Bolts)
+	{
+		GunCooldown += 1.f / GunRate;
+		const FName Socket = bRightGunNext ? GunRight : GunLeft;
+		bRightGunNext = !bRightGunNext;
+		const FVector Muzzle = Hull->DoesSocketExist(Socket) ? Hull->GetSocketLocation(Socket) : GetActorLocation();
+		// The two streams cross at the convergence distance ahead of the nose.
+		const FVector Aim = GetActorLocation() + GetActorForwardVector() * Convergence * 100.f;
+		const FVector Dir = (Aim - Muzzle).GetSafeNormal();
+		Bolts->Fire(this, ERewildBoltKind::Cannon, Health->Team, Muzzle, Dir * GunSpeed * 100.f + Velocity, GunDamage);
+		GunHeat += GunHeatPerShot;
+		if (GunHeat >= 1.f)
+		{
+			bGunsOverheated = true;
+		}
+	}
+	if (!bFireHeld)
+	{
+		GunCooldown = FMath::Max(GunCooldown, 0.f);
+	}
+}
+
 void ARewildFighter::UpdateDust()
 {
 	const UCameraComponent* Camera = bCockpitView ? CockpitCamera : ChaseCamera;
@@ -297,26 +467,122 @@ void ARewildFighter::UpdateDust()
 	Dust->BatchUpdateInstancesTransforms(0, Instances, true, true, true);
 }
 
-void ARewildFighter::TickDemo(float DeltaSeconds)
+void ARewildFighter::HandleHit(const FVector& Point, bool bOnShield)
 {
-	// A scripted run for stills: a climbing right turn, the cockpit view, then a boost. Shots go to
-	// Saved/Screenshots/ as ScreenShot*.png in this order: chase, cockpit, chase on boost.
-	DemoTime += DeltaSeconds;
-	Stick = FVector2D(0.28f, 0.06f);
-	ThrottleInput = Throttle < 0.75f ? 1.f : 0.f;
-	APlayerController* PC = Cast<APlayerController>(GetController());
-
-	struct FStep { float Time; int32 Action; };
-	static const FStep Steps[] = {{1.5f, 0}, {4.f, 0}, {6.f, 0}, {6.5f, 1}, {8.5f, 0}, {9.f, 2}, {11.5f, 0}, {13.f, 3}};
-	while (DemoStep < UE_ARRAY_COUNT(Steps) && DemoTime >= Steps[DemoStep].Time)
+	if (bOnShield)
 	{
-		switch (Steps[DemoStep].Action)
+		ShieldFlash = 1.f;
+	}
+}
+
+void ARewildFighter::HandleBoltHit(AActor* Shooter, AActor* Victim)
+{
+	if (Shooter == this && Victim)
+	{
+		HitMarker = 0.15f;
+	}
+}
+
+void ARewildFighter::HandleDeath()
+{
+	bDead = true;
+	bFireHeld = false;
+	RespawnIn = RespawnTime;
+	ARewildExplosion::Spawn(GetWorld(), GetActorLocation(), Velocity, 1.6f);
+	Hull->SetVisibility(false, true);  // the hull and everything on it, cameras excepted
+	Hull->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+}
+
+void ARewildFighter::Respawn()
+{
+	bDead = false;
+	SetActorTransform(Start);
+	Velocity = Start.GetRotation().GetForwardVector() * CruiseSpeedMax * Throttle * 100.f;
+	Health->Restore();
+	Hull->SetVisibility(true, true);
+	ShieldBubble->SetVisibility(false);
+	Hull->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	GunHeat = 0.f;
+	bGunsOverheated = false;
+}
+
+void ARewildFighter::Shoot(const TCHAR* Why)
+{
+	if (APlayerController* PC = Cast<APlayerController>(GetController()))
+	{
+		PC->ConsoleCommand(TEXT("Shot"));
+		UE_LOG(LogTemp, Display, TEXT("[rewild demo] shot %d at %.1f s: %s"), DemoShots, DemoTime, Why);
+		++DemoShots;
+	}
+}
+
+void ARewildFighter::TickDemo(float Dt)
+{
+	// An autopilot against the training range: it turns onto the lead point of the target nearest the nose and
+	// fires when it is within 2.5 degrees and 1.6 km. Screenshots: one in the first attack, one from the cockpit,
+	// and two of each of the first three kills (as the drone blows apart and half a second later).
+	DemoTime += Dt;
+	ThrottleInput = Throttle < 0.45f ? 1.f : (Throttle > 0.5f ? -1.f : 0.f);
+
+	ARewildDrone* Drone = Cast<ARewildDrone>(Target.Get());
+	if (Drone)
+	{
+		const FVector Aim = bHasLead ? LeadPoint : Drone->GetActorLocation();
+		const FVector Local = GetActorTransform().InverseTransformVectorNoScale((Aim - GetActorLocation()).GetSafeNormal());
+		const float Yaw = FMath::Atan2(Local.Y, Local.X);
+		const float Pitch = FMath::Atan2(Local.Z, Local.X);
+		Stick = FVector2D(FMath::Clamp(Yaw * 8.f, -1.f, 1.f), FMath::Clamp(Pitch * 8.f, -1.f, 1.f));
+		const float Off = FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(Local.X, -1.f, 1.f)));
+		const float Distance = FVector::Dist(Aim, GetActorLocation());
+		// Fire only when the aim is off by less than the drone's own size (it is 3.5 m across).
+		const float Allowed = FMath::Max(0.2f, FMath::RadiansToDegrees(FMath::Atan(150.f / FMath::Max(Distance, 1.f))));
+		bFireHeld = Off < Allowed && Distance < 70000.f;  // within 700 m, where the shots show the fight
+		// Close slowly on near targets so there is time to shoot
+		ThrottleInput = Distance < 60000.f ? (Throttle > 0.25f ? -1.f : 0.f) : ThrottleInput;
+	}
+	else
+	{
+		Stick = FVector2D(0.3f, 0.f);  // circle until a drone comes into the nose's cone
+		bFireHeld = false;
+	}
+
+	static TWeakObjectPtr<ARewildDrone> Engaged;
+	if (Engaged.IsValid() && !Engaged->IsAlive() && bDemoTargetAlive)
+	{
+		++DemoKills;
+		if (DemoKills <= 3)
 		{
-		case 0: if (PC) { PC->ConsoleCommand(TEXT("Shot")); } break;  // the frame as played (HighResShot renders a separate view)
-		case 1: SetCockpitView(true); break;
-		case 2: SetCockpitView(false); bBoostHeld = true; break;
-		default: if (PC) { PC->ConsoleCommand(TEXT("quit")); } break;
+			DemoShotAt.Add(DemoTime + 0.08f);
+			DemoShotAt.Add(DemoTime + 0.6f);
 		}
-		++DemoStep;
+	}
+	if (Drone != Engaged.Get())
+	{
+		Engaged = Drone;
+	}
+	bDemoTargetAlive = Engaged.IsValid() && Engaged->IsAlive();
+
+	if (DemoTime > 15.f && DemoTime < 15.f + Dt * 1.5f)
+	{
+		SetCockpitView(true);
+	}
+	if (DemoTime > 18.f && bCockpitView)
+	{
+		SetCockpitView(false);
+	}
+	for (int32 I = DemoShotAt.Num() - 1; I >= 0; --I)
+	{
+		if (DemoTime >= DemoShotAt[I])
+		{
+			Shoot(bCockpitView ? TEXT("cockpit") : (DemoKills > 0 ? TEXT("kill") : TEXT("attack")));
+			DemoShotAt.RemoveAt(I);
+		}
+	}
+	if (DemoTime > 40.f || (DemoKills >= 3 && DemoShotAt.Num() == 0 && DemoTime > 17.f))
+	{
+		if (APlayerController* PC = Cast<APlayerController>(GetController()))
+		{
+			PC->ConsoleCommand(TEXT("quit"));
+		}
 	}
 }

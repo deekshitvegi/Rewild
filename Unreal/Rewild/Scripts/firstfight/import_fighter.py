@@ -106,6 +106,7 @@ def link(a, a_pin, b, b_pin):
 
 def paint_material(ao_tex, cavity_tex):
     mat = fresh_material("M_FighterPaint")
+    mat.set_editor_property("used_with_instanced_static_meshes", True)  # explosion shards use the dark metal
     colour = param(mat, unreal.MaterialExpressionVectorParameter, "Colour", -900, -200, unreal.LinearColor(0.7, 0.7, 0.68, 1))
     rough = param(mat, unreal.MaterialExpressionScalarParameter, "Roughness", -900, 200, 0.35)
     metal = param(mat, unreal.MaterialExpressionScalarParameter, "Metallic", -900, 320, 0.0)
