@@ -99,6 +99,17 @@ click; do the rest yourself.
 - The owner's machines: PC with RTX 3070; laptop with RTX 4070 (Windows often runs apps on its Intel chip unless set
   per app in Settings, Display, Graphics); phone iPhone 15 Pro Max.
 
+## Platforms (owner asked 8 Nov: "I dont need a browser game now right? I can install the game and play on any device?")
+
+- No browser game is needed. Unreal 5 cannot run in a browser (its web export was removed years ago), so the Claude
+  app preview is gone as a test harness: the owner plays builds on the PC. The web version stays on the website.
+- Windows (Steam) first. Steam Deck runs Windows builds. Mac and iPhone builds need a Mac with Xcode and an Apple
+  developer account; Android builds can be made on the Windows PC (Android SDK/NDK) and need a Play developer account.
+- Phones cannot run the PC look (Lumen, Nanite, virtual shadows are desktop features): a phone version is its own
+  scaled build with its own lighting and lighter assets, planned after the PC game works. Consoles need approval and
+  dev kits from Sony, Microsoft or Nintendo.
+- Before every push: `git pull --rebase` first (the owner may commit from another machine or session).
+
 ## Milestones
 
 - 8 Nov 2026: repo created; web version, art sources and docs copied from the portfolio repo (its main at 42e1344);
