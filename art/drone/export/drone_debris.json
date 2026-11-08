@@ -1,0 +1,339 @@
+{
+ "note": "Fragments of drone.fbx; vertices in the drone's frame (metres, +X front, +Z up), pivot at the drone origin. Centroid = centre of volume.",
+ "whole_volume_l": 631.433,
+ "fragments": [
+  {
+   "name": "Debris_01",
+   "triangles": 6804,
+   "volume_l": 112.037,
+   "centroid": [
+    0.557,
+    0.32,
+    0.247
+   ],
+   "bbox_min": [
+    -0.478,
+    -0.333,
+    -0.348
+   ],
+   "bbox_max": [
+    1.37,
+    0.739,
+    0.798
+   ],
+   "non_manifold_edges": 0,
+   "slots": [
+    "M_Paint_Orange",
+    "M_Paint_White",
+    "M_Paint_Grey",
+    "M_Metal_Dark",
+    "M_Glass_Sensor",
+    "M_Metal_Torn"
+   ]
+  },
+  {
+   "name": "Debris_02",
+   "triangles": 10880,
+   "volume_l": 76.291,
+   "centroid": [
+    0.1,
+    -0.521,
+    0.446
+   ],
+   "bbox_min": [
+    -0.693,
+    -1.75,
+    -0.203
+   ],
+   "bbox_max": [
+    0.944,
+    0.121,
+    0.855
+   ],
+   "non_manifold_edges": 0,
+   "slots": [
+    "M_Paint_Orange",
+    "M_Paint_White",
+    "M_Paint_Grey",
+    "M_Metal_Dark",
+    "M_Glass_Sensor",
+    "M_Beacon",
+    "M_Foil_MLI",
+    "M_Metal_Torn"
+   ]
+  },
+  {
+   "name": "Debris_03",
+   "triangles": 2810,
+   "volume_l": 41.235,
+   "centroid": [
+    0.539,
+    0.288,
+    -0.514
+   ],
+   "bbox_min": [
+    -0.022,
+    -0.168,
+    -0.9
+   ],
+   "bbox_max": [
+    1.006,
+    0.71,
+    -0.089
+   ],
+   "non_manifold_edges": 0,
+   "slots": [
+    "M_Paint_Orange",
+    "M_Paint_White",
+    "M_Paint_Grey",
+    "M_Metal_Dark",
+    "M_Metal_Torn"
+   ]
+  },
+  {
+   "name": "Debris_04",
+   "triangles": 6172,
+   "volume_l": 106.604,
+   "centroid": [
+    0.185,
+    -0.6,
+    -0.311
+   ],
+   "bbox_min": [
+    -0.62,
+    -1.745,
+    -0.9
+   ],
+   "bbox_max": [
+    0.944,
+    0.2,
+    0.267
+   ],
+   "non_manifold_edges": 0,
+   "slots": [
+    "M_Paint_Orange",
+    "M_Paint_White",
+    "M_Paint_Grey",
+    "M_Metal_Dark",
+    "M_Metal_Torn"
+   ]
+  },
+  {
+   "name": "Debris_05",
+   "triangles": 1620,
+   "volume_l": 20.423,
+   "centroid": [
+    -0.6,
+    0.529,
+    0.361
+   ],
+   "bbox_min": [
+    -0.91,
+    0.116,
+    -0.103
+   ],
+   "bbox_max": [
+    -0.009,
+    0.71,
+    0.71
+   ],
+   "non_manifold_edges": 0,
+   "slots": [
+    "M_Paint_Orange",
+    "M_Paint_White",
+    "M_Paint_Grey",
+    "M_Metal_Dark",
+    "M_Metal_Torn"
+   ]
+  },
+  {
+   "name": "Debris_06",
+   "triangles": 6074,
+   "volume_l": 31.142,
+   "centroid": [
+    -0.727,
+    -0.248,
+    0.515
+   ],
+   "bbox_min": [
+    -0.948,
+    -0.851,
+    0.08
+   ],
+   "bbox_max": [
+    -0.22,
+    0.333,
+    1.202
+   ],
+   "non_manifold_edges": 0,
+   "slots": [
+    "M_Paint_Orange",
+    "M_Paint_White",
+    "M_Paint_Grey",
+    "M_Metal_Dark",
+    "M_Foil_MLI",
+    "M_Metal_Torn"
+   ]
+  },
+  {
+   "name": "Debris_07",
+   "triangles": 4968,
+   "volume_l": 51.446,
+   "centroid": [
+    -0.509,
+    0.603,
+    -0.46
+   ],
+   "bbox_min": [
+    -0.91,
+    0.116,
+    -0.855
+   ],
+   "bbox_max": [
+    0.083,
+    0.855,
+    0.209
+   ],
+   "non_manifold_edges": 0,
+   "slots": [
+    "M_Paint_Orange",
+    "M_Paint_White",
+    "M_Paint_Grey",
+    "M_Metal_Dark",
+    "M_Metal_Torn"
+   ]
+  },
+  {
+   "name": "Debris_08",
+   "triangles": 14300,
+   "volume_l": 126.123,
+   "centroid": [
+    -0.62,
+    -0.282,
+    -0.382
+   ],
+   "bbox_min": [
+    -1.205,
+    -1.654,
+    -0.855
+   ],
+   "bbox_max": [
+    0.063,
+    0.463,
+    0.386
+   ],
+   "non_manifold_edges": 0,
+   "slots": [
+    "M_Paint_Orange",
+    "M_Paint_White",
+    "M_Paint_Grey",
+    "M_Metal_Dark",
+    "M_Foil_MLI",
+    "M_Metal_Torn"
+   ]
+  },
+  {
+   "name": "Debris_09",
+   "triangles": 2246,
+   "volume_l": 37.792,
+   "centroid": [
+    -0.253,
+    1.167,
+    0.0
+   ],
+   "bbox_min": [
+    -0.62,
+    0.682,
+    -0.052
+   ],
+   "bbox_max": [
+    0.28,
+    1.75,
+    0.148
+   ],
+   "non_manifold_edges": 0,
+   "slots": [
+    "M_Paint_Orange",
+    "M_Paint_White",
+    "M_Paint_Grey",
+    "M_Metal_Dark"
+   ]
+  },
+  {
+   "name": "Debris_10",
+   "triangles": 2048,
+   "volume_l": 21.396,
+   "centroid": [
+    -0.548,
+    0.687,
+    0.687
+   ],
+   "bbox_min": [
+    -0.81,
+    0.45,
+    0.461
+   ],
+   "bbox_max": [
+    -0.29,
+    0.855,
+    0.855
+   ],
+   "non_manifold_edges": 0,
+   "slots": [
+    "M_Paint_Orange",
+    "M_Paint_Grey",
+    "M_Metal_Dark"
+   ]
+  },
+  {
+   "name": "Debris_11",
+   "triangles": 254,
+   "volume_l": 0.032,
+   "centroid": [
+    -0.74,
+    0.213,
+    0.777
+   ],
+   "bbox_min": [
+    -0.757,
+    0.183,
+    0.698
+   ],
+   "bbox_max": [
+    -0.723,
+    0.292,
+    1.202
+   ],
+   "non_manifold_edges": 0,
+   "slots": [
+    "M_Paint_Grey",
+    "M_Metal_Dark"
+   ]
+  },
+  {
+   "name": "Debris_12",
+   "triangles": 6714,
+   "volume_l": 6.91,
+   "centroid": [
+    -0.434,
+    0.501,
+    0.498
+   ],
+   "bbox_min": [
+    -0.856,
+    0.309,
+    0.309
+   ],
+   "bbox_max": [
+    -0.03,
+    0.682,
+    0.682
+   ],
+   "non_manifold_edges": 0,
+   "slots": [
+    "M_Paint_Grey",
+    "M_Foil_MLI"
+   ]
+  }
+ ]
+}
