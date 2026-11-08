@@ -202,6 +202,8 @@ version's Higgsfield fighter: "not just bender rebuild where ever you feel will 
   later replaced by the crew films they asked for.
 - public/films/wormhole-cinematic.*: yes, delete ("I didnt like the old wormhole film"), done 157b468.
 - Push to main on the new account: yes (7 Nov).
+- The first fight's fighter (8 Nov): **keep the web version's shape, rebuild it properly** (not new concepts).
+- NASA Blue Marble maps for Earth from orbit (8 Nov): **yes, download the full-detail set** (~400 MB, kept out of git).
 
 ## Open list, in the agreed order
 1. #57 Haven: seas, lakes, rivers, waterfalls; temples/shrines from many cultures; more people, touchable
