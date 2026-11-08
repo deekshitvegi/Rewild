@@ -106,3 +106,13 @@ on 4 cores made every frame take 7 minutes).
 - In orbit, shadowed sides went black against black space (a fin vanished): Earthshine, from the sky light's lower
   half seeing the atmosphere's ground at Earth's 30% reflectance, lights them as in real photographs (8 Nov).
 - Engine glow at an emissive of 4,000 read as dull brown rings at EV 14.5; it needs about 100,000 (8 Nov).
+- An explosion as one glowing sphere read first as a flat orange disc, then (with fine turbulent noise) as a glitter
+  ball: overlap several soft-edged billows with slow noise, add a short white-hot core, and grade it zoomed in (8 Nov).
+- Bolts and sparks thinner than a pixel break into dashes or vanish at 300-700 m: keep them about two pixels wide by
+  scaling width with distance; a tracer is about one frame of travel long (25 m at 1,500 m/s) (8 Nov).
+- A streak lit evenly end to end looks like a toy rod. Fade it from a hot head; at EV 14.5 an emissive of 6e5 is 20x
+  over mid-grey, so a gentle fade still blows out: it needs a steep one (exp(-6), 5% at the middle) (8 Nov).
+- Materials on instanced meshes need the instanced-mesh usage set in the editor; a game run silently fell back to the
+  default grey material (8 Nov).
+- The autopilot never hit until it stopped using the player's stick dead zone and fired only within the target's
+  angular size: test aim code with a bot before judging hit feedback (8 Nov).

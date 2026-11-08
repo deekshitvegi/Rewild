@@ -81,6 +81,29 @@ Alt+Enter full screen, Esc quit; a gamepad works too. Shots of an autopilot run:
 Open: the paint is clean but plain up close (scanned paint, decals and wear next); the cockpit interior is a
 placeholder; the HUD (direction F); the clouds (above). Then milestone 3, fighting.
 
+## Fighting: where it stands (8 Nov 2026, late night)
+
+Playable from `Play Rewild.bat`: left mouse (or right trigger) fires the twin cannons. A training range of seven
+drones waits ahead: two that hold still, three that circle at 60, 90 and 120 m/s, and two armed ones that weave and
+shoot pale blue training bolts back. Each respawns 6 s after it dies; so do you, 4 s after.
+
+- Guns: 12 rounds a second from alternating wing guns, bolts at 1,500 m/s converging at 700 m, so you lead a
+  moving target. The amber pip shows where to aim; the reticle ticks when you hit. The guns heat up and must cool.
+- Shields soak hits first and recharge after 3 s without a hit (a blue ripple shows where they were hit); then the
+  hull takes damage. The HUD shows shield, hull and gun heat as arcs around the reticle, amber when low.
+- Explosions in vacuum: a white-hot core, a lumpy fireball of five billows that burns out in under a second (no
+  air, no smoke), sparks streaking outward, dark shards and the wreck's own pieces flying on with its speed.
+  Impacts are small orange sparks on a hull, a blue flash on a shield.
+- Tracers are 20 m streaks with a hot head fading down the tail; sparks and tracers never get thinner than about
+  two pixels on screen, so they do not break into dashes far away.
+- Code: `Source/Rewild/RewildBolts.*` (every bolt in flight, traced each frame), `RewildHealthComponent`,
+  `RewildExplosion`, `RewildDrone` (drones and the range), `RewildFighter` (guns, lead, death), `RewildHUD`.
+  Materials: `Scripts/firstfight/make_fx.py` (`make_fx_only.py` remakes just those, fast).
+- `-RewildDemo` now hunts the drones on autopilot and takes shots at each kill: three kills in about 23 s.
+
+Open: the drone model (a placeholder sphere until the rebuilt one is imported); the fireball's edge shows a little
+stepping up close; sound; then milestone 4, the Harrow.
+
 ## Milestones
 
 1. **Earth from orbit.** References: ISS photographs of Earth (day side, terminator, limb). Checklist with numbers,

@@ -193,7 +193,9 @@ then read its CLAUDE.md and do the first-session checklist." Done: Unreal 5.8.2 
 Seagate the user plugs in: "i didnt plug in the d driev let me do it now"), the C++ project built, first test shots
 (docs/images/unreal-test-shot-*.jpg). Then "Start the first fight" (PLAN.md step 2). On rebuilding the web
 version's Higgsfield fighter: "not just bender rebuild where ever you feel will be the best". After Earth from orbit
-and the rebuilt fighter: "Start flying" (milestone 2; playable from "Play Rewild.bat").
+and the rebuilt fighter: "Start flying" (milestone 2; playable from "Play Rewild.bat"). Then "Next: fighting"
+(milestone 3): guns that need leading, recharging shields, hull damage, explosions and debris, a range of practice
+drones (some shoot back). Shots: docs/images/first-fight-*.jpg.
 
 ## Answers the user gave to Claude's questions
 - HUD: liked Cockpit and Game glass, then chose **F: glass with instruments**.

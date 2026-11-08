@@ -148,3 +148,6 @@ click; do the rest yourself.
 - 8 Nov 2026: first session on the PC (PLAN.md step 1). The C++ project `Unreal/Rewild` on Unreal 5.8.2 builds; the
   first test shots from the engine (Sky Atmosphere and Volumetric Cloud only, no ground yet):
   docs/images/unreal-test-shot-golden-hour.jpg and docs/images/unreal-test-shot-orbit.jpg.
+- 8 Nov 2026: the first fight, milestones 1-3 (docs/unreal/FIRST_FIGHT.md): a real-size Earth from orbit (NASA Blue
+  Marble), the rebuilt fighter flying over it, and fighting: guns with lead, shields, hull, explosions, a range of
+  practice drones. Play: `Play Rewild.bat`.
