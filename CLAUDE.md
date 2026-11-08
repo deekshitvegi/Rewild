@@ -42,7 +42,9 @@ untouched ("leave the one we have just like this").
 ## First session on the PC (do this before anything else)
 
 The owner says Unreal Engine 5 is installed. Check, and tell the owner in plain words what is missing and where to
-click; do the rest yourself.
+click; do the rest yourself. This needs Claude Code running on the PC (the Claude desktop app with the Rewild folder
+open, or `claude remote-control` in that folder). A cloud session runs on a Linux machine with no graphics card and
+cannot see the PC: there it can only do step 1 and docs (tried 8 Nov, see HISTORY.md).
 
 1. `git lfs install`, then `git pull`. Unreal binaries go through LFS (see .gitattributes); `web/` and `art/` are
    plain files because cloud sessions cannot push LFS.

@@ -188,6 +188,13 @@ low altitude; no combat code at all; chapters are go-to-marker cards). Answers: 
 space war = **dogfights, capital ship battles, boarding, ground battles**; **the war is the main story**.
 Plan: docs/unreal/PLAN.md.
 
+**8 Nov (night, Rewild repo).** "Clone https://github.com/deekshitvegi/Rewild into this folder, then read its
+CLAUDE.md and do the first-session checklist." Asked from a cloud session, which runs on a Linux machine with no
+graphics card and cannot see the PC. Done there: the clone (already in place, at main 6b1aa70), `git lfs install`,
+`git pull`; the skills were already installed by the session-start hook. OPEN, needs a session on the PC: find
+Unreal and note its version, check Visual Studio 2022 with "Game development with C++", create and build
+`Unreal/Rewild`, open the editor, take the first test shot, commit and push.
+
 ## Answers the user gave to Claude's questions
 - HUD: liked Cockpit and Game glass, then chose **F: glass with instruments**.
 - Earth size: **real size** (scale-up planned, docs/real-scale.md).
