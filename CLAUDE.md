@@ -66,6 +66,8 @@ click; do the rest yourself.
 - RTX 3070 (8 GB), 8 cores / 16 threads. C: has about 120 GB free; D: about 680 GB.
 - Build the editor: `"D:\Unreal\UE_5.8\Engine\Build\BatchFiles\Build.bat" RewildEditor Win64 Development
   "-Project=<repo>\Unreal\Rewild\Rewild.uproject" -WaitMutex` (run it from PowerShell; Git Bash mangles the quotes).
+- Play: `Play Rewild.bat` in the repo root runs the game (L_FirstFight) from the editor binaries. Add `-RewildDemo` to
+  that command line for an autopilot run that takes five screenshots (`Shot`) and quits: grade the game as played.
 - Test shots: `UnrealEditor.exe <repo>\Unreal\Rewild\Rewild.uproject -ExecutePythonScript="<abs path to script>"
   -ini:EditorSettings:[/Script/UnrealEd.EditorPerformanceSettings]:bThrottleCPUWhenNotForeground=False`.
   `Unreal/Rewild/Scripts/test_shot.py` is the example (builds /Game/Dev/TestShot, takes HighResShots, quits); shots

@@ -63,6 +63,24 @@ Open, in order:
 Rebuild everything: `fetch_earth.py`, `prepare_earth.py`, `make_planet_mesh.py` (Blender), then `build_earth.py` in
 the editor (command line in Scripts/rewild_shots.py). `REWILD_BELOW="lat,lon"` moves the stills elsewhere.
 
+## Flying: where it stands (8 Nov 2026, night)
+
+Playable: double-click `Play Rewild.bat` in the repo (needs the D: drive). Mouse steers (a virtual stick: the ring
+shows where it points), W/S throttle, A/D roll, Shift boost (overheats after 4 s), C chase or cockpit camera,
+Alt+Enter full screen, Esc quit; a gamepad works too. Shots of an autopilot run: docs/images/first-flight-*.jpg.
+
+- The fighter: `Scripts/firstfight/import_fighter.py` imports art/fighter/export into /Game/FirstFight/Fighter and
+  makes its materials (paint darkened in grooves by the cavity map, clear glass, an engine glow the throttle drives).
+- The flight: `Source/Rewild/RewildFighter.*` (C++): flight assist with a little drift, boost and heat, chase camera
+  with capped lag, cockpit camera at the pilot's eye, specks streaming past for speed. `RewildHUD` draws only the
+  aim reticle for now. `RewildGameMode` flies it.
+- The level: `Scripts/firstfight/build_fight_level.py` builds /Game/FirstFight/Maps/L_FirstFight from the Earth
+  stack (build_earth.py) and a start 400 km above Egypt. It is the project's default map.
+- Stills of the game as played: run it with `-RewildDemo` (flies a scripted turn, takes five shots, quits).
+
+Open: the paint is clean but plain up close (scanned paint, decals and wear next); the cockpit interior is a
+placeholder; the HUD (direction F); the clouds (above). Then milestone 3, fighting.
+
 ## Milestones
 
 1. **Earth from orbit.** References: ISS photographs of Earth (day side, terminator, limb). Checklist with numbers,

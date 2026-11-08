@@ -101,3 +101,8 @@ on 4 cores made every frame take 7 minutes).
 - 12 mm panel grooves vanish under flat paint at chase distance; a 4,096 px cavity mask (bakes in 15 s) makes them read.
 - UV use stayed at 39-46% with about 4,800 islands, most of them groove walls: unwrap before the booleans when texel
   density matters, and measure UV area directly (counting baked texels said 58%).
+- Nanite drew part of a 6,371 km Earth as a flat slab jutting above the limb, but only in play (camera banking and
+  moving), never in the level-camera stills: grade in the game too. The planet is a plain 262k-triangle mesh (8 Nov).
+- In orbit, shadowed sides went black against black space (a fin vanished): Earthshine, from the sky light's lower
+  half seeing the atmosphere's ground at Earth's 30% reflectance, lights them as in real photographs (8 Nov).
+- Engine glow at an emissive of 4,000 read as dull brown rings at EV 14.5; it needs about 100,000 (8 Nov).
