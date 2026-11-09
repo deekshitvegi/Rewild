@@ -217,3 +217,6 @@ The cloud session improves `web/` here (the portfolio repo keeps its own frozen 
 - 9 Nov 2026: first fight milestones 4-5: the Harrow's Reapers (the sickle the owner chose) in flanking packs,
   lock-on missiles and flares, tuned hard; Noor, Kai and Amara as wingmen with orders; 53 voiced radio lines; the
   first story mission, First contact; the main menu (Continue, Story, Free play) with saving.
+- 9 Nov 2026: the owner chose the worlds first (round planets, land anywhere, Haven first). The planet system works
+  on Haven (docs/unreal/HAVEN.md): fly down from 400 km to the colony in under two minutes at 110-125 frames a
+  second; seas, hills, a thin teal sky; ray-traced Lumen. `Play Haven.bat`; stills in docs/images/haven-*.jpg.

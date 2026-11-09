@@ -194,3 +194,19 @@ on 4 cores made every frame take 7 minutes).
   restart them before a long run.
 - Wikimedia refuses this machine's API searches and full-size files (rate limit); its standard thumbnail widths
   (1280, 3840) still download one at a time.
+- Planets in Unreal (Haven, 9 Nov), ten rounds of stills:
+  - `Shot` photographs the next frame drawn. Moving the camera in the same tick photographed every view's
+    neighbour, before its ground was built. Hold the view half a second after the shot.
+  - Single-layer water reads its depth from the depth buffer, which has no precision left thousands of km away.
+    From 14,000 km the whole frame went white. Use plain deep water beyond about 50 km.
+  - The real-time sky light is one picture taken at the camera. From space it holds the planet and lit its own
+    night side. Fade it out above 30 km.
+  - A sea drawn on half the ground's grid crossed the seabed inside cells and sparkled along tile lines. Draw both
+    on one grid and keep the seabed 2% of the spacing under the sea.
+  - A material that runs in ray tracing must use `Texture2DSample`, never `.Sample`, or it fails to compile and the
+    default checkerboard shows.
+  - Under a warm light (#ffd8b0) a grass albedo of 0.03, 0.105, 0.07 came out olive. To read teal it needed
+    0.012, 0.085, 0.10, plus Specular 0.2: at the default it mirrored the warm horizon.
+  - PixelDepth is in centimetres: a roughness ramp written for 25 km ran over 250 m.
+  - A coast term of half a cell in the tile error split every coast in view to 3-pixel cells: 3,300 tiles from
+    300 m. A tenth of a cell keeps coasts sharp from orbit at under 1,000 tiles.

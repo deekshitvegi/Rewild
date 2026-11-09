@@ -44,7 +44,7 @@ GRASS_HEATH = (0.008, 0.045, 0.055)
 GRASS_LUSH = (0.012, 0.085, 0.100)
 GRASS_DRY = (0.040, 0.095, 0.075)
 ROCK = (0.15, 0.15, 0.14)
-SAND = (0.32, 0.29, 0.23)
+SAND = (0.24, 0.22, 0.18)
 BED = (0.035, 0.045, 0.035)  # dark silt: at 0.07 the shallows glowed neon jade under the water (9 Nov)
 
 tools = unreal.AssetToolsHelpers.get_asset_tools()
@@ -132,7 +132,8 @@ float gd = lerp(1.0, pow(max(soil, 0.0), 0.7), near);
 float3 rd = lerp(1.0, (TRI(Rock, 4.0) * 0.6 + TRI(Rock, 16.0) * 0.4) / ROCK_MEAN, near);
 float sd = lerp(1.0, dot(TRI(Sand, 3.0) / SAND_MEAN, lumw), near);
 float wet = saturate(TW.y);
-float3 c = W.x * grass * gd + W.y * ROCK_COL * rd + W.z * SAND_COL * sd * (1.0 - 0.3 * wet) + W.w * BED_COL * gd;
+// Wet sand is about half as bright as dry (under the clear shallows it glowed neon, 9 Nov).
+float3 c = W.x * grass * gd + W.y * ROCK_COL * rd + W.z * SAND_COL * sd * (1.0 - 0.6 * wet) + W.w * BED_COL * gd;
 Rough = dot(W, float4(0.92, 0.78, 0.86, 0.6)) - 0.2 * wet;
 // Grass is a canopy that drinks light: little specular, or it mirrors the warm horizon and goes olive far off.
 Spec = dot(W, float4(0.2, 0.45, 0.4, 0.5));
@@ -245,7 +246,7 @@ def sea_material():
     pin(const((0.000002, 0.000008, 0.000007), -300, 250), ("Scattering Coefficients", "ScatteringCoefficients"))
     # (green and blue absorbed a little faster than pure water: the shallows were a bright neon band, HAVEN.md wants
     # a muted jade, #2f6d63)
-    pin(const((0.0045, 0.0009, 0.0011), -300, 330), ("Absorption Coefficients", "AbsorptionCoefficients"))
+    pin(const((0.0045, 0.0009, 0.0007), -300, 330), ("Absorption Coefficients", "AbsorptionCoefficients"))  # blue at 0.0011 left the shallows grass-green (30, 77, 57)
     pin(const(0.25, -300, 410), ("Phase G", "PhaseG"))
     pin(const(1.0, -300, 470), ("Color Scale Behind Water", "ColorScaleBehindWater"))
     mel.recompile_material(mat)

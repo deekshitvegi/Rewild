@@ -64,4 +64,31 @@ people.
 
 ## Where it stands
 
-- 9 Nov: the plan and this checklist. Building the planet system.
+- 9 Nov: the plan and this checklist.
+- 9 Nov, later: **the planet system works on Haven** (24ed5c5 and after). `Play Haven.bat` starts 400 km up; the
+  autopilot (`-RewildWorldFly`) flies down to 800 m over the colony in 107 s. Stills: docs/images/haven-*.jpg
+  (globe, 1,000 km, flying in at 100 km, the ship at 300 m, on foot, low over the bay). Ten rounds of stills.
+
+  Graded against the checklist and the key art (sRGB means, 1080p):
+  1. Round from every height: **yes** (the globe, the limb from 1,000 km, the horizon curving from 300 m).
+  2. Detail to your feet: **partial**. Points every 27 cm, no cracks seen. But the ground is a gravel photograph
+     tinted teal (1,024 px over 2 m, 512 px a metre) until the real grass, and needs scanned 4K ground sets.
+  3. No visible popping: **not checked in motion yet** (tiles split where their error passes 1.5 px).
+  4. Rolling grassland: **partial**. Hills of 20-80 m round the colony, but the land elsewhere reads as noise, and
+     the colour patches seen from the air look like noise too: valleys do not drain yet (erosion is step 4).
+  5. Seas: **yes**, 39.9% of the surface. Dark teal deep, the shallows teal-jade (27, 73, 68 against #2f6d63:
+     47, 109, 99). A faint brightness step at a tile edge in the glint toward TON 618 seen from 20 km (open).
+  6. Sky: **partial**. Zenith 19, 31, 34 (key art 10, 19, 22); the band of light along the sea's horizon is too
+     bright and cyan.
+  7. Light: **partial**. Grass 36, 61, 53 (key art 15, 61, 53): the red is still high.
+  8. Flying: **yes**. 400 km to 800 m in 107 s, frames steady.
+  9. Cost: **yes**. 8-9 ms a frame through the whole descent (110-125 a second), 1080p, RTX 3070: no grass, trees
+     or clouds yet.
+
+  Settled on the way (the reasons are in the code): the light is a little less warm than #ffd8b0 (255, 228, 200)
+  and 2.5 degrees wide; a third of Earth's haze and an eighth of its air; the sea's water shading only within
+  about 50 km (beyond, a plain deep-water surface), because the depth buffer has no precision left thousands of
+  km away; the sky light fades out above 30 km (from space it lit the planet's own night side).
+
+  Next, step 4 in order: TON 618 drawn in the sky; scanned ground (needs the owner's yes to download); erosion and
+  the colony's ground pressed in (bay, tarn, falls); real grass, trees and rocks; clouds; then the places.
