@@ -136,6 +136,12 @@ export const Ship = forwardRef<ShipHandle, { livery?: Livery }>(function Ship({ 
     const hullModel = useMemo(() => {
         if (!model) return null;
         const copy = model.scene.clone(true);
+        // The model came marked as bare metal all over (metallicFactor 1), so its colour was whatever it reflected:
+        // white in the old studio light, brown in a world's own. A ship's hull is painted, and paint is not metal.
+        copy.traverse((object) => {
+            const material = (object as THREE.Mesh).material as THREE.MeshStandardMaterial | undefined;
+            if (material?.isMeshStandardMaterial && material.metalness > 0.3) material.metalness = 0.3;
+        });
         return livery ? applyLivery(copy, livery) : copy;
     }, [model, livery]);
     useEnvironmentOn(hullModel, gl, 0.45);
