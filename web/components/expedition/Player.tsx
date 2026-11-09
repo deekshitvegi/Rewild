@@ -102,6 +102,7 @@ const Lighting = ({ runtime }: { runtime: ExpeditionRuntime }) => {
     }), []);
     const haze = useMemo(() => new THREE.Color(), []);
     const nextLook = useRef(0);
+    const lastLook = useRef('');
     const toSun = useMemo(() => new THREE.Vector3(), []);
     const gasLook = useMemo(createZoneLook, []);
     const gasFlash = useMemo(() => new THREE.Color(0.75, 0.82, 1.0), []);
@@ -146,7 +147,7 @@ const Lighting = ({ runtime }: { runtime: ExpeditionRuntime }) => {
         }
         const now = performance.now();
         if (now >= nextLook.current && sunRef.current && hemiRef.current) {
-            nextLook.current = now + 500;
+            nextLook.current = now + 1000;
             const fill = hemiRef.current.intensity;
             if (body) look.up.copy(runtime.camera).sub(body.position).normalize();
             else look.up.copy(light);
@@ -174,7 +175,14 @@ const Lighting = ({ runtime }: { runtime: ExpeditionRuntime }) => {
             }
             // The horizon is the brightest part of a sky with air: what makes a glossy hull gleam along its sides.
             if (air > 0) look.horizon.multiplyScalar(1.35);
-            updateWorldEnvironment(gl, gpuEpoch, look);
+            // Redrawn only when the light has really changed (the hour, the weather, another world): measured 9 Nov,
+            // one redraw is about 8% of a frame's work, so it is kept to a second apart at most.
+            const key = [look.sun.x, look.sun.y, look.sun.z, look.up.x, look.up.y, look.up.z, look.sunColor.r, look.sunColor.g,
+                look.zenith.r, look.zenith.g, look.zenith.b, look.horizon.r, look.ground.g].map((v) => Math.round(v * 100)).join();
+            if (key !== lastLook.current) {
+                lastLook.current = key;
+                updateWorldEnvironment(gl, gpuEpoch, look);
+            }
         }
     });
     return (
