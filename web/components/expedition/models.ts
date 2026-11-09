@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { trackLoad } from './loadProgress';
+import { detailBudget } from './detailBudget';
 import * as THREE from 'three';
 import { GLTFLoader, type GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
@@ -190,6 +191,43 @@ const queueTextures = (root: THREE.Object3D) => {
     });
 };
 
+/** Shrinks every picture in a model wider or taller than `limit` (decoded off the main thread). */
+const shrinkPictures = async (root: THREE.Object3D, limit: number) => {
+    if (!Number.isFinite(limit) || typeof createImageBitmap === 'undefined') return;
+    const textures = new Set<THREE.Texture>();
+    root.traverse((object) => {
+        const mesh = object as THREE.Mesh;
+        if (!mesh.isMesh) return;
+        (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).forEach((material) => {
+            for (const slot of TEXTURE_SLOTS) {
+                const texture = (material as unknown as Record<string, THREE.Texture | null | undefined>)[slot];
+                if (texture) textures.add(texture);
+            }
+        });
+    });
+    await Promise.all([...textures].map(async (texture) => {
+        const image = texture.image as (ImageBitmap | HTMLImageElement) & { close?: () => void } | null;
+        const width = image?.width ?? 0;
+        const height = image?.height ?? 0;
+        if (!image || Math.max(width, height) <= limit) return;
+        const scale = limit / Math.max(width, height);
+        try {
+            const small = await createImageBitmap(image, {
+                resizeWidth: Math.max(1, Math.round(width * scale)),
+                resizeHeight: Math.max(1, Math.round(height * scale)),
+                resizeQuality: 'high',
+                premultiplyAlpha: 'none',
+                colorSpaceConversion: 'none',
+            });
+            texture.image = small;
+            texture.needsUpdate = true;
+            image.close?.();
+        } catch {
+            // Kept at full size.
+        }
+    }));
+};
+
 export const loadModel = (name: ModelName): Promise<GLTF> => {
     let pending = cache.get(name);
     if (!pending) {
@@ -198,6 +236,11 @@ export const loadModel = (name: ModelName): Promise<GLTF> => {
         pending = trackLoad(loader.then((gltf) => withRetries(() => (PACKED ? loadPacked(gltf, url) : gltf.loadAsync(url)))));
         // After its retries a failure is remembered for a while (the stand-in stays), then forgotten,
         // so the next time the scene is built the model is fetched again.
+        // Pictures larger than the detail level holds are shrunk before anything uses them.
+        pending = pending.then(async (gltf) => {
+            await shrinkPictures(gltf.scene, detailBudget.modelPicture);
+            return gltf;
+        });
         const failed = pending;
         pending.then((gltf) => queueTextures(gltf.scene)).catch(() => {
             setTimeout(() => { if (cache.get(name) === failed) cache.delete(name); }, 20000);
@@ -207,14 +250,93 @@ export const loadModel = (name: ModelName): Promise<GLTF> => {
     return pending;
 };
 
-/** The model once it has loaded, or null while it loads (or if it cannot). */
+/**
+ * Letting go of models. Every model used to stay in memory from the moment it loaded until the page closed:
+ * after one trip round the worlds the page held about 3.5 GB (graphics process 1.9 GB, page 1.6 GB, measured
+ * 9 Nov), and the Claude app reloads a page that size: the "freezes and restarts". Now whatever shows a model
+ * holds it (acquireModel / releaseModel; useModel does both); once nothing has held it for MODEL_RELEASE ms it
+ * is dropped from the cache and its meshes and pictures are freed, with whatever was made from it
+ * (onModelEvicted: tree photographs, rigged creatures). Coming back loads it again.
+ */
+const MODEL_RELEASE = 30000;
+const holders = new Map<ModelName, number>();
+const releaseTimers = new Map<ModelName, ReturnType<typeof setTimeout>>();
+const evictedHooks = new Set<(name: ModelName, gltf: GLTF) => void>();
+
+/** Called with each model as it is let go, to free what was made from it. Returns the unsubscribe. */
+export const onModelEvicted = (hook: (name: ModelName, gltf: GLTF) => void) => {
+    evictedHooks.add(hook);
+    return () => { evictedHooks.delete(hook); };
+};
+
+/** Frees a loaded model's meshes and pictures on the graphics card (the arrays go with the last reference). */
+const disposeModel = (gltf: GLTF) => {
+    const textures = new Set<THREE.Texture>();
+    gltf.scene.traverse((object) => {
+        const mesh = object as THREE.Mesh;
+        if (!mesh.isMesh) return;
+        mesh.geometry?.dispose();
+        (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).forEach((material) => {
+            if (!material) return;
+            for (const slot of TEXTURE_SLOTS) {
+                const texture = (material as unknown as Record<string, THREE.Texture | null | undefined>)[slot];
+                if (texture) textures.add(texture);
+            }
+            material.dispose();
+        });
+    });
+    textures.forEach((texture) => {
+        texture.dispose();
+        const queued = textureQueue.indexOf(texture);
+        if (queued >= 0) textureQueue.splice(queued, 1);
+    });
+};
+
+const evictModel = (name: ModelName) => {
+    releaseTimers.delete(name);
+    if (holders.get(name)) return;
+    const pending = cache.get(name);
+    if (!pending) return;
+    cache.delete(name);
+    pending.then((gltf) => {
+        evictedHooks.forEach((hook) => { try { hook(name, gltf); } catch { /* the rest still go */ } });
+        disposeModel(gltf);
+    }).catch(() => undefined);
+};
+
+/** Holds a model (loading it if need be) until releaseModel is called as many times. */
+export const acquireModel = (name: ModelName): Promise<GLTF> => {
+    holders.set(name, (holders.get(name) ?? 0) + 1);
+    const timer = releaseTimers.get(name);
+    if (timer !== undefined) {
+        clearTimeout(timer);
+        releaseTimers.delete(name);
+    }
+    return loadModel(name);
+};
+
+/** Lets go of a model held with acquireModel; it is freed once nothing has held it for MODEL_RELEASE ms. */
+export const releaseModel = (name: ModelName) => {
+    const left = (holders.get(name) ?? 1) - 1;
+    if (left > 0) {
+        holders.set(name, left);
+        return;
+    }
+    holders.delete(name);
+    if (!releaseTimers.has(name)) releaseTimers.set(name, setTimeout(() => evictModel(name), MODEL_RELEASE));
+};
+
+/** The model once it has loaded, or null while it loads (or if it cannot). Held while mounted. */
 export const useModel = (name: ModelName | null): GLTF | null => {
     const [model, setModel] = useState<GLTF | null>(null);
     useEffect(() => {
         if (!name) return undefined;
         let alive = true;
-        loadModel(name).then((gltf) => { if (alive) setModel(gltf); }).catch(() => undefined);
-        return () => { alive = false; };
+        acquireModel(name).then((gltf) => { if (alive) setModel(gltf); }).catch(() => undefined);
+        return () => {
+            alive = false;
+            releaseModel(name);
+        };
     }, [name]);
     return model;
 };

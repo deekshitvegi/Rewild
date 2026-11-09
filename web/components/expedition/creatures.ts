@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import type { BiomeKind, ExpeditionBody } from './bodies';
-import { loadModel } from './models';
+import { loadModel, onModelEvicted, type ModelName } from './models';
 import { SURFACE_SHADING_GLSL, createSurfaceUniforms } from './surfaceShading';
 
 /**
@@ -507,6 +507,14 @@ export const rigCreature = (gltf: GLTF, config: CreatureConfig): FittedCreature 
 };
 
 const fitted = new Map<CreatureModel, Promise<FittedCreature | null>>();
+
+// A creature's model let go (models.ts): its rigged copy goes too, and is made again on the next visit.
+onModelEvicted((name: ModelName) => {
+    const pending = fitted.get(name as CreatureModel);
+    if (!pending) return;
+    fitted.delete(name as CreatureModel);
+    pending.then((creature) => creature?.geometry.dispose()).catch(() => undefined);
+});
 
 /** A creature model, loaded and rigged once per visit. */
 export const loadCreature = (name: CreatureModel) => {

@@ -8,7 +8,7 @@ import { SURFACE_SHADING_GLSL, createSurfaceUniforms } from './surfaceShading';
 import { landingZoneDirection } from './sites';
 import { LANDMARK_KEY, generateCell, generateLandmarks, kit, layerModels, type Collider, type LayerState, type ModelFit, type PropLayer, type PropModel } from './propPlacement';
 import { bakeImpostor, createTreeMaterial, createTreeShadowMaterial, impostorGeometry, prepareTree, treeShadowGeometry, type TreeImpostor, type TreeParts } from './trees';
-import { gpuEpoch, loadModel, type ModelName } from './models';
+import { acquireModel, gpuEpoch, onModelEvicted, releaseModel, type ModelName } from './models';
 import { usesEarthMap } from './earth';
 import { revivalUniform, treeAlive } from './revival';
 import type { ExpeditionRuntime } from './runtime';
@@ -354,11 +354,15 @@ const useLayerModels = (layers: PropLayer[]) => {
         let alive = true;
         const names = [...new Set(layers.flatMap((layer) => [...layerModels(layer).map((model) => model.name), ...(layer.tree?.models ?? [])]))];
         names.forEach((name) => {
-            loadModel(name).then((gltf) => {
+            acquireModel(name).then((gltf) => {
                 if (alive) setModels((current) => new Map(current).set(name, gltf));
             }).catch(() => undefined);
         });
-        return () => { alive = false; };
+        // Held while the world's layers stand; let go (and freed a while later) when the world is left.
+        return () => {
+            alive = false;
+            names.forEach(releaseModel);
+        };
     }, [layers]);
     return models;
 };
@@ -369,6 +373,17 @@ const useLayerModels = (layers: PropLayer[]) => {
  */
 type TreeEntry = { parts: TreeParts; impostor: TreeImpostor; renderer: THREE.WebGLRenderer; epoch: number } | null;
 const trees = new WeakMap<GLTF, Map<boolean, TreeEntry>>();
+// A tree model let go (models.ts): its photographs and its own copies of the wood and leaves go with it.
+onModelEvicted((_name, gltf) => {
+    trees.get(gltf)?.forEach((entry) => {
+        if (!entry) return;
+        entry.impostor.targets.forEach((target) => target.dispose());
+        entry.parts.bark.dispose();
+        entry.parts.leaves.dispose();
+        entry.parts.twigs?.dispose();
+    });
+    trees.delete(gltf);
+});
 const treeOf = (gltf: GLTF, renderer: THREE.WebGLRenderer, tile: number, dead: boolean) => {
     let kinds = trees.get(gltf);
     if (!kinds) trees.set(gltf, (kinds = new Map()));

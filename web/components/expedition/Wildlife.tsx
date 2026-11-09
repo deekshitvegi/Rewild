@@ -13,6 +13,7 @@ import type { WalkerState } from './walking';
 import type { ShipState } from './flight';
 import { CREATURES, HABITATS, createCreatureMaterial, creatureInstanceGeometry, loadCreature, type CreatureModel, type FittedCreature } from './creatures';
 import { ContactShadows, type ContactShadowsHandle } from './ContactShadows';
+import { acquireModel, releaseModel } from './models';
 import { alienHerdsOn, siteDirection, type LifeForm } from './aliens';
 
 /**
@@ -342,12 +343,18 @@ const useCreatures = (species: Species[]) => {
     const [creatures, setCreatures] = useState<Map<CreatureModel, FittedCreature>>(() => new Map());
     useEffect(() => {
         let alive = true;
-        [...new Set(species.map((s) => s.model))].forEach((name) => {
+        const names = [...new Set(species.map((s) => s.model))];
+        names.forEach((name) => {
+            // Held while the herds are here (models.ts), let go when the world is left.
+            acquireModel(name).catch(() => undefined);
             loadCreature(name).then((creature) => {
                 if (alive && creature) setCreatures((current) => new Map(current).set(name, creature));
             }).catch(() => undefined);
         });
-        return () => { alive = false; };
+        return () => {
+            alive = false;
+            names.forEach(releaseModel);
+        };
     }, [species]);
     return creatures;
 };
