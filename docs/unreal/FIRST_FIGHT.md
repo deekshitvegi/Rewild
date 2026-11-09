@@ -143,6 +143,33 @@ hull and is sometimes shot down, for one or two kills. Stills: docs/images/first
 Open: the missiles are stand-in cylinders (their flames and smoke are what show; a model of Rewild's own design is
 still to do); sound; the radio and the mission's start, win and lose (milestone 5).
 
+## Wingmen and the mission: where it stands (9 Nov 2026)
+
+Playable from `Play Rewild.bat`: the main menu (Continue, Story, Free play, Settings, Quit) on frosted glass over the
+fighter and its wing flying above Earth. Story is "First contact" (docs/missions/first_contact.md): the intro over
+the Nile, three practice drones, the Holdouts' radio call from Svalbard, then three waves of four, five and six
+Reapers; won, "Fly on" carries on in free play; shot down, try again from the start of the wave. Free play is the
+endless packs, with the wing coming back from the Argo a minute after being shot down.
+
+- The wing (`RewildWingman.*`): Noor, Kai and Amara in the player's fighter with their own stripe colours (sage,
+  ochre, cobalt), flying ahead of Dev where the chase camera sees them; they fly like the Reapers (`RewildFlight.*`,
+  shared), lead their shots a little worse than Dev, carry two missiles and eight flares, jink and beam missiles.
+  Orders 1-4 (d-pad): attack my target, cover me, form up, weapons free, answered by voice. In the story a wingman
+  shot down ejects and is out (ARGO picks them up). A third of each pack hunts the wingmen.
+- The radio (`RewildRadio.*`): 53 recorded lines in the owner's cast voices (ElevenLabs v4 through Higgsfield,
+  art/audio/radio, `make_radio.py` adds the fighters' radio chain; ARGO dry; Svalbard through heavy static), one at
+  a time, story lines first; chatter when quiet: kills, a Reaper on Dev's tail, missile lock and launch, shields
+  down, hull breach, a wingman hit or shot down.
+- The mission (`RewildMission.*`) runs the beats, the objective, the packs and the checkpoints (saved at the start
+  and each wave: `RewildSave.*`, slots Story, Free and Last for Continue; settings in their own slot).
+- The screens (`RewildUI.*`, Slate): subtitles and objective on rounded frosted glass in Inter (art/fonts/inter, OFL),
+  the speaker's name in amber; the main menu on the left, pause and the end of a mission centred.
+- Tested on autopilot 9 Nov: the whole mission runs; the autopilot is shot down on wave 2 (it is hard), and with
+  `-RewildInvulnerable` it clears wave 3 to the mission-complete panel. `-RewildUIShots` photographs the menus;
+  `-RewildCheckpoint=N` starts the demo at a wave. Stills: docs/images/first-fight-main-menu.jpg, -wing-and-radio, -mission-complete.
+
+Open: the missile models (stand-ins); sound effects and music (only the radio speaks); the full HUD (direction F).
+
 ## Milestones
 
 1. **Earth from orbit.** References: ISS photographs of Earth (day side, terminator, limb). Checklist with numbers,

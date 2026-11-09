@@ -165,3 +165,7 @@ on 4 cores made every frame take 7 minutes).
   lines that belong before the event (the approach) a trigger of their own (time to the throat) (9 Nov).
 - On a virtual clock the audio clock still runs in real time: a score that keeps itself in sync re-syncs every test frame. Mix test
   films from the logged starts, not from what the browser played (9 Nov).
+- UI: Slate's auto-wrap squeezed the subtitle panel to one word a line; give subtitles a fixed wrap width (840) and
+  a minimum panel width (360). Glass at 0.4 opacity let a white hull show through the buttons: 0.6-0.78 (9 Nov).
+- Wingmen flying level with or behind the player sat outside the chase camera's view (70 deg): fly them 60-110 m
+  ahead and 45-95 m out, so the player sees the wing (9 Nov).

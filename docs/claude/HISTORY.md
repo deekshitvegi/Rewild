@@ -219,6 +219,11 @@ and a free mode where you can explore without worrying about any missions is thi
 people to play story mode only you get what I'm saying right? and an option to continue the game where you left off"
 (docs/design/GAME_DESIGN.md, "How you play"; the menu and saves come with first fight milestone 5).
 
+**9 Nov (the PC chat).** "Next: the mission": wingmen, the radio, the first story mission and the menus (milestone
+5). The owner allowed downloading the Inter font and ffmpeg for it. Then: "how do I test the game??" (double-click
+Play Rewild.bat; the main menu opens) and "Yes, test it first" (the autopilot test before they play). They closed a
+test window by a misclick: a test window must be left alone.
+
 ## Answers the user gave to Claude's questions
 - HUD: liked Cockpit and Game glass, then chose **F: glass with instruments**.
 - Earth size: **real size** (scale-up planned, docs/real-scale.md).

@@ -86,6 +86,11 @@ click; do the rest yourself.
     holds the .uasset files open, the reset fails halfway and reverts some sources (9 Nov; the work came back from
     the stash). Close Unreal first. This PC has no global git identity: pass the owner's `-c user.name/-c
     user.email` to `pull --rebase` too, not only to `commit`.
+- C++: every UObject pointer a class keeps (TMap and TArray included) must be a UPROPERTY, or garbage collection frees
+  it under you: the radio cached its voice lines in a plain TMap and crashed mid-mission (9 Nov).
+- Test runs: `-RewildDemo` plays the story on autopilot (`-RewildFree` free play, `-RewildCheckpoint=N` from a wave,
+  `-RewildInvulnerable` to reach the end), `-RewildUIShots` photographs the menus; shots in
+  Unreal/Rewild/Saved/Screenshots/WindowsEditor. A window that pops up during a test is the test: leave it alone.
 
 ## The owner's rules (all still hold)
 
@@ -192,3 +197,6 @@ The cloud session improves `web/` here (the portfolio repo keeps its own frozen 
   which stays selectable), the fall into TON 618 to spaghettification with the real times on the ship's clock and a
   death card (fall.ts), the pulse drive's warp bubble (ScreenWarp.tsx), and the cast's voices and take A of the scores
   with captions (Voices.tsx, voiceLines.ts, web/public/audio). The same beats are the reference for the Unreal warp.
+- 9 Nov 2026: first fight milestones 4-5: the Harrow's Reapers (the sickle the owner chose) in flanking packs,
+  lock-on missiles and flares, tuned hard; Noor, Kai and Amara as wingmen with orders; 53 voiced radio lines; the
+  first story mission, First contact; the main menu (Continue, Story, Free play) with saving.
