@@ -48,17 +48,18 @@ TON618_COLOUR = (255, 228, 200)  # warm, a little less than #ffd8b0: at #ffd8b0 
 # Degrees. 8 made a flat, hard-edged plate of glare on the sea: Unreal reflects a wide light as one uniform disc
 # (9 Nov). Its true look on the water comes with the hole drawn in the sky (HAVEN.md step 4); 2.5 keeps soft shadows.
 TON618_ANGLE = 2.5
-# TON 618 (HAVEN.md, "TON 618 in the sky"): the web version's ray tracer, at the figures the offline renders matched
-# to the key art. Lengths in Schwarzschild radii.
-HOLE_R0 = 20.0          # Haven's distance from the hole
-HOLE_HEIGHT = 2.4       # Haven above the disk's plane
-HOLE_R_IN, HOLE_R_OUT = 1.6, 7.7
+# TON 618 (HAVEN.md, "TON 618 in the sky"): the web version's ray tracer at the web version's own figures (the owner,
+# 9 Nov: "can we have black hole more closer to the planet just like in the initial game"; 20 radii, matched to the key
+# art's proportions, looked too far). Lengths in Schwarzschild radii.
+HOLE_R0 = 13.18         # Haven's distance from the hole: 13 out and 2.2 above the disk, as web/components/expedition/bodies.ts
+HOLE_HEIGHT = 2.2       # Haven above the disk's plane
+HOLE_R_IN, HOLE_R_OUT = 2.2, 13.0  # the disk, as BlackHole.tsx
 HOLE_ROLL = 12.0        # degrees the band is tilted in the sky, rising to the right
 HOLE_DOPPLER = 0.35     # how much of the gas's orbital speed shows (Interstellar toned it down too)
 HOLE_BRIGHT = 36000.0   # emissive at temperature 1 (nits): 80,000 washed it to cream; 45,000 still pale beside the key art
 HOLE_SPIN = 0.04        # turn rate at the inner edge, radians a second (slower outward, as Kepler)
 HOLE_STEPS = 400
-HOLE_REACH = 50.0       # degrees from the hole's centre traced; beyond, nothing is drawn
+HOLE_REACH = 100.0      # degrees from the hole's centre traced (this close, the disk floods half the sky)
 HOLE_AIR = 0.92         # Haven's thin air lets this much of the hole's light through toward the colony
 HOLE_GLOW = 1000.0      # nits at the centre of the air's glow round the disk (4,000 greyed the shadow)
 SKY_RADIUS = 1.0e10     # cm: the sky sphere the hole is drawn on, 100,000 km round the planet
@@ -258,9 +259,9 @@ float3 radiance = 0;
 // Haven's air scatters a faint blue-white glow round the disk, longest along the band (as in the key art).
 float3 bandAxis = normalize(cross(-e1, float3(0, 1, 0)));
 float3 upAxis = cross(bandAxis, -e1);
-float gx = dot(rd, bandAxis) / 0.42, gy = dot(rd, upAxis) / 0.17;
+float gx = dot(rd, bandAxis) / 0.7, gy = dot(rd, upAxis) / 0.28;
 float3 glow = float3(0.55, 0.70, 1.0) * GLOW * exp(-(gx * gx + gy * gy)) * step(0.0, -a);
-if (a > -COS_REACH) return glow;
+if (a > SKIP_ABOVE) return glow;  // farther than REACH from the hole's centre
 float3 nrm = cross(e1, rd);
 float nl = length(nrm);
 if (nl < 1e-6) return glow;
@@ -280,6 +281,7 @@ if (abs(e1.y) + abs(e2.y) > 1e-5)
 }
 float images = 0.0;
 float trans = 1.0;
+bool captured = false;
 // The disk's pattern turns with the gas, the inner parts faster; two copies half a cycle apart crossfade, so the
 // shear never winds up over a long game.
 float cycle = frac(T / 240.0);
@@ -355,13 +357,14 @@ float wb = abs(cycle * 2.0 - 1.0);
         images += 1.0;
         nextCross += 3.14159265;
     }
-    if (nxt.x >= 1.0 && nxt.y > 0.0) break;  // through the horizon
+    if (nxt.x >= 1.0 && nxt.y > 0.0) { captured = true; break; }  // through the horizon
     if (nxt.x <= 0.0) break;                 // escaped
     if (trans < 0.01) break;
     s = nxt;
     phi = nphi;
 }
-return radiance * BRIGHT * AIR + glow;
+// the air's glow stays out of the shadow, which reads near black, as in the key art and the web game
+return radiance * BRIGHT * AIR + glow * (captured ? 0.15 : 1.0);
 """
 
 SEA_HLSL = """
@@ -565,7 +568,8 @@ def ton618_material():
     nx, ny, nz, obs = hole_frame()
     code = TON618_HLSL
     vals = {
-        "COS_REACH": f"{math.cos(math.radians(HOLE_REACH)):.6f}", "STEPS": str(HOLE_STEPS),
+        # (written out as a value: "-COS" became "--0.17", a decrement, once the reach passed 90 degrees)
+        "SKIP_ABOVE": f"({-math.cos(math.radians(HOLE_REACH)):.6f})", "STEPS": str(HOLE_STEPS),
         "R0": f"{HOLE_R0:.3f}", "RIN": f"{HOLE_R_IN:.3f}", "ROUT": f"{HOLE_R_OUT:.3f}",
         "DOPPLER": f"{HOLE_DOPPLER:.3f}", "SPIN": f"{HOLE_SPIN:.4f}", "BRIGHT": f"{HOLE_BRIGHT:.1f}", "AIR": f"{HOLE_AIR:.3f}",
         "GLOW": f"{HOLE_GLOW:.1f}",

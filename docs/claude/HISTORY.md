@@ -251,6 +251,11 @@ Asked how landing should work and which world comes first, they chose **land any
 - Landing on a world (9 Nov): **land anywhere**: every world a whole round planet flown down to from orbit, the
   hand-built places inside it (not a few separate landing sites).
 - First world (9 Nov): **Haven**.
+- Haven's ground (9 Nov): **yes** to downloading scanned 4K ground sets (Poly Haven, CC0, 330 MB, kept out of git).
+- Next on Haven (9 Nov): **TON 618 first**, then (asked) landing and walking, the water still to finish.
+- TON 618 (9 Nov): **closer, as in the web game** ("can we have black hole more closer to the planet just like in the
+  initial game"): the web version's figures, Haven 13 Schwarzschild radii out and 2.2 above the disk. Also asked: "can I
+  fall into the blackhole?" (the web game's fall, fall.ts, is to be brought over).
 
 ## Open list, in the agreed order
 1. #57 Haven: seas, lakes, rivers, waterfalls; temples/shrines from many cultures; more people, touchable

@@ -139,3 +139,11 @@ the key art (shadow to disk about 1:4). The story's "a day here is ten years at 
   kept out of the sky light, which it warmed to beige, so the sea does not reflect it yet); 9 yes; 10 not measured.
   Fixed on the way: the ground's texture positions, read from the mesh as half floats, drew bar codes 600 m from
   their origin; the materials now take each vertex's place in its tile plus the tile's offset at full precision.
+- 9 Nov, night: **TON 618 closer, as in the web game** (the owner: "can we have black hole more closer to the planet
+  just like in the initial game"). The web version's own figures: Haven 13.18 Schwarzschild radii out, 2.2 above the
+  disk, the disk from 2.2 to 13 radii. The shadow is now about 22 degrees across, the halo arches over it and the
+  disk sweeps across the whole sky down to the horizon (docs/images/haven-ton618-from-the-colony.jpg,
+  haven-ton618-over-the-bay.jpg). The richer palette is in: peach, blue-white at the cool outer reaches; the air's
+  glow stays out of the shadow, which reads near black. Cost measured: 1.0-1.2 ms a frame with it filling the view
+  (keyart view 6.8 ms against 5.8 with it hidden; over the bay 6.4 against 5.2), within line 10's 1.5 ms. The key
+  art's proportions (20 radii) are kept in the offline renders, should the owner want them back.

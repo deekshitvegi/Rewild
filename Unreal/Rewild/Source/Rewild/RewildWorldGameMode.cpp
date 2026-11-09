@@ -75,9 +75,9 @@ void ARewildWorldGameMode::StartPlay()
 			{TEXT("foot"), FVector2D(-250.0, 0.0), 1.8, FVector2D(1500.0, 0.0), 25.0},
 			{TEXT("ground"), FVector2D(-100.0, 0.0), 1.7, FVector2D(-97.0, 0.0), 0.0},
 			// TON 618 as the key art frames it (it hangs 25 degrees up, east): from the colony's ground, east and up
-			// about 16 degrees; and from the ship over the bay, up about 14 degrees
-			{TEXT("keyart"), FVector2D(-600.0, 0.0), 2.0, FVector2D(3000.0, 0.0), 1030.0},
-			{TEXT("skyship"), FVector2D(-1500.0, -300.0), 300.0, FVector2D(2600.0, 200.0), 1320.0},
+			// about 25 degrees; and from the ship over the bay, up about 24 degrees (the hole is huge this close)
+			{TEXT("keyart"), FVector2D(-600.0, 0.0), 2.0, FVector2D(3000.0, 0.0), 1680.0},
+			{TEXT("skyship"), FVector2D(-1500.0, -300.0), 300.0, FVector2D(2600.0, 200.0), 2130.0},
 		};
 		FString Only;
 		if (FParse::Value(FCommandLine::Get(), TEXT("RewildStill="), Only))
@@ -155,10 +155,17 @@ void ARewildWorldGameMode::Tick(float DeltaSeconds)
 	if ((Waited > 1.f && SettledFor > 0.5f) || Waited > 60.f)
 	{
 		AfterSettled += DeltaSeconds;
+		if (AfterSettled > 1.0f)
+		{
+			FrameSum += DeltaSeconds;
+			++Frames;
+		}
 		if (AfterSettled > 2.5f)
 		{
-			UE_LOG(LogTemp, Display, TEXT("[rewild world] shot %s after %.1f s (%s), %d tiles"), *Stills[StillIndex].Name, Waited,
-				SettledFor > 0.f ? TEXT("settled") : TEXT("timed out"), Planet->GetTilesShown());
+			UE_LOG(LogTemp, Display, TEXT("[rewild world] shot %s after %.1f s (%s), %d tiles, %.2f ms a frame"), *Stills[StillIndex].Name, Waited,
+				SettledFor > 0.f ? TEXT("settled") : TEXT("timed out"), Planet->GetTilesShown(), 1000.0 * FrameSum / FMath::Max(1, Frames));
+			FrameSum = 0.0;
+			Frames = 0;
 			PC->ConsoleCommand(TEXT("Shot"));
 			if (StillIndex + 1 < Stills.Num())
 			{

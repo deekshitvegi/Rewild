@@ -46,6 +46,8 @@ private:
 	float SettledFor = 0.f;
 	float AfterSettled = 0.f;
 	float NextIn = 0.f;
+	double FrameSum = 0.0;  // frame times while a settled view waits for its shot (its cost)
+	int32 Frames = 0;
 	bool bShots = false;
 	bool bQuitting = false;
 
