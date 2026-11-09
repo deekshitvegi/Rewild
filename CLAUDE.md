@@ -186,3 +186,9 @@ The cloud session improves `web/` here (the portfolio repo keeps its own frozen 
 - 8 Nov 2026: the first fight, milestones 1-3 (docs/unreal/FIRST_FIGHT.md): a real-size Earth from orbit (NASA Blue
   Marble), the rebuilt fighter flying over it, and fighting: guns with lead, shields, hull, explosions, a range of
   practice drones. Play: `Play Rewild.bat`.
+- 9 Nov 2026 (web version): spacetime effects drawn by the game, after the owner's reel and the black hole videos
+  (web/components/expedition): the wormhole crossing (crossing.ts, WormholeTransit.tsx: a 17 s sequence down a spiral
+  throat of blue gas, the dark eye, the Argo stretched with afterimages, a white exit; replaces the Higgsfield film,
+  which stays selectable), the fall into TON 618 to spaghettification with the real times on the ship's clock and a
+  death card (fall.ts), the pulse drive's warp bubble (ScreenWarp.tsx), and the cast's voices and take A of the scores
+  with captions (Voices.tsx, voiceLines.ts, web/public/audio). The same beats are the reference for the Unreal warp.

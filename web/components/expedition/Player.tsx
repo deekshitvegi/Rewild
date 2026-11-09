@@ -22,7 +22,8 @@ import { SAMPLE_TUBES, tubeId } from './history';
 import { BLACK_HOLE, WORMHOLES, crossThroat, farness, findWormhole } from './deepSpace';
 import { updateEnvironment } from './environment';
 import { PlayerShadows } from './ContactShadows';
-import { FALL_TRIGGER, advanceFall, beginFall } from './fall';
+import { FALL_LOST_AT, FALL_SPIRAL, FALL_STRETCH_AT, FALL_TRIGGER, advanceFall, beginFall, countFallDeath, spaghetti, spaghettiShot } from './fall';
+import { CROSSING_LAYER } from './WormholeTransit';
 import { Grass } from './Grass';
 import { NO_MIRROR_LAYER, WaterSurface } from './WaterSurface';
 import { TORCH } from './surfaceShading';
@@ -43,6 +44,10 @@ import { CrewFleet } from './CrewFleet';
 import { LIVERIES } from './livery';
 import { MothershipView } from './MothershipView';
 import { TRANSIT_HOLD, TRANSIT_SECONDS, WormholeTransit } from './WormholeTransit';
+import { BEAT, argoLook, crossingCamera, throatLook } from './crossing';
+import { addRipple, bodyWarp, bodyWarpActive, clearBodyWarp, screenFx, stretchMatrix, toFrame } from './spacetime';
+import { AfterimagesWatch } from './Afterimages';
+import { ScreenWarpWatch } from './ScreenWarp';
 import type { Region } from './region';
 import { Colonists } from './Colonists';
 import { Waterfalls } from './Waterfalls';
@@ -85,6 +90,9 @@ export const computeStart = (options: ExpeditionStart = {}) => {
     return { position, lookAt, up: shipUp, landed };
 };
 
+const throatSun = new THREE.Color(0.62, 0.78, 1.0);
+const throatWalls = new THREE.Color(0.2, 0.42, 1.0);
+const throatDeep = new THREE.Color(0.04, 0.12, 0.45);
 const Lighting = ({ runtime }: { runtime: ExpeditionRuntime }) => {
     const sunRef = useRef<THREE.DirectionalLight>(null);
     const hemiRef = useRef<THREE.HemisphereLight>(null);
@@ -144,6 +152,18 @@ const Lighting = ({ runtime }: { runtime: ExpeditionRuntime }) => {
             hemiRef.current.color.copy(sky);
             hemiRef.current.groundColor.copy(ground);
             hemiRef.current.intensity = (0.55 + air * 0.35 * runtime.daylight) * (1 + 1.8 * (body?.biome?.overcast ?? 0) * (1 - skyBeyond(runtime))) + (gas?.flash?.level ?? 0) * 2.2;
+        }
+        // In the throat (crossing.ts) the light is the throat's: from the eye ahead, and the walls' blue
+        // all round; the far side's light grows as she comes up to it.
+        const transit = runtime.transit;
+        if (transit && sunRef.current && hemiRef.current) {
+            const glow = throatLook(transit.t).glow;
+            sunRef.current.position.copy(transit.axis).multiplyScalar(100).addScaledVector(transit.up, 35);
+            sunRef.current.color.copy(throatSun).lerp(sunColor, glow * 0.6);
+            sunRef.current.intensity = 2.2 + 2.5 * glow;
+            hemiRef.current.color.copy(throatWalls);
+            hemiRef.current.groundColor.copy(throatDeep);
+            hemiRef.current.intensity = 1.5;
         }
         const now = performance.now();
         if (now >= nextLook.current && sunRef.current && hemiRef.current) {
@@ -220,6 +240,13 @@ const onPlayerLayer = (object: THREE.Object3D) => {
     if (object.layers.mask !== 1 << layer) object.layers.set(layer);
 };
 const arrival = new THREE.Matrix4();
+const warpCentre = new THREE.Vector3();
+const warpPoint = new THREE.Vector3();
+const warpFrame = new THREE.Vector2();
+const warpMatrix = new THREE.Matrix4();
+const wobbleEuler = new THREE.Euler();
+const IDENTITY = new THREE.Matrix4();
+const shot = { position: new THREE.Vector3(), target: new THREE.Vector3(), up: new THREE.Vector3(), fov: 64 };
 const crossing = new THREE.Vector3();
 /**
  * The mouth the player last came out of: it cannot take them back until the camera is clear of it.
@@ -676,6 +703,120 @@ export const Player = ({ runtime, input, start, region }: { runtime: ExpeditionR
         ship.noticeTime = time;
     };
     const lossCounted = useRef(false);
+    // The ship as drawn, stretched and turned by the crossing or the fall (spacetime.ts): the fighter,
+    // and the Argo when she is the one flying. Identity whenever nothing bends space.
+    const shipWarpRef = useRef<THREE.Group>(null);
+    const argoWarpRef = useRef<THREE.Group>(null);
+    const warpDrive = useRef({ engaged: false, compress: 0, speed: 0 });
+    const fallLayers = useRef<number | null>(null);
+    const { scene: sceneForLayers } = useThree();
+    const updateSpacetime = (camera: THREE.Camera, dt: number) => {
+        const transit = runtime.transit;
+        const fall = runtime.fall;
+        const length = mothership.docked ? MOTHERSHIP.length : 9;
+        warpCentre.copy(ship.position).sub(runtime.origin);
+        if (transit) {
+            const look = argoLook(transit.t, transit.clock, runtime.reducedMotion);
+            bodyWarp.stretch = look.stretch;
+            bodyWarp.axis.copy(transit.axis);
+            bodyWarp.wobble.setFromEuler(wobbleEuler.set(look.pitch, look.yaw, look.roll));
+            bodyWarp.centre.copy(warpCentre);
+            bodyWarp.ghosts = look.ghosts;
+            bodyWarp.ghostStep = -0.12 * length * look.stretch;
+            // Fanned out across the way through, towards the camera's side: the trail is seen, not hidden behind her.
+            bodyWarp.ghostSpread.copy(camera.position).sub(warpCentre);
+            bodyWarp.ghostSpread.addScaledVector(transit.axis, -bodyWarp.ghostSpread.dot(transit.axis));
+            bodyWarp.ghostSpread.cross(transit.axis).normalize().multiplyScalar(0.06 * length * look.ghostStretch / 0.1);
+            bodyWarp.ghostStrength = look.ghostStrength;
+            bodyWarp.ghostStretch = look.ghostStretch;
+            bodyWarp.ghostColor.setRGB(0.42, 0.72, 1.7);
+            bodyWarp.shade = look.shade;
+            // The far side's light floods the whole frame, the Argo with it, and fades into the system there.
+            screenFx.flash = THREE.MathUtils.smoothstep(transit.t, BEAT.white + 0.62, BEAT.white + 0.75) * (1 - THREE.MathUtils.smoothstep(transit.t, BEAT.out + 0.15, BEAT.end));
+        } else if (fall.active && fall.time >= FALL_STRETCH_AT - 0.2) {
+            const end = spaghetti(fall);
+            // Drawn out along the line to the centre, squeezed across it (the tidal stretch), afterimages trailing.
+            bodyWarp.stretch = end.stretch;
+            bodyWarp.axis.copy(BLACK_HOLE.position).sub(ship.position).normalize();
+            bodyWarp.wobble.identity();
+            bodyWarp.centre.copy(warpCentre);
+            bodyWarp.ghosts = end.ghosts > 0.01 ? 6 : 0;
+            // Trailing behind her motion round the centre, each image a little more drawn out than the last.
+            bodyWarp.ghostStep = -0.05 * length * end.stretch;
+            // (Round the hole, from the plane of the fall: the way she is going, across the line to the centre.)
+            bodyWarp.ghostSpread.crossVectors(fall.e1, fall.e2).cross(bodyWarp.axis);
+            warpPoint.copy(camera.position).sub(warpCentre).normalize();
+            bodyWarp.ghostSpread.addScaledVector(warpPoint, -bodyWarp.ghostSpread.dot(warpPoint));
+            if (bodyWarp.ghostSpread.lengthSq() > 1e-6) bodyWarp.ghostSpread.normalize().multiplyScalar(-0.3 * length * end.ghosts);
+            bodyWarp.ghostStrength = 0.6 * end.ghosts;
+            bodyWarp.ghostStretch = 0.22 * end.ghosts;
+            bodyWarp.ghostColor.setRGB(0.8, 0.9, 1.5);
+            bodyWarp.shade = 0;
+        } else if (bodyWarpActive()) clearBodyWarp();
+        if (!transit && screenFx.flash > 0) screenFx.flash = 0;
+
+        // Inside the horizon nothing outside is seen directly, only by the light the tracer bends in
+        // (BlackHole.tsx): the worlds and the far mouth are not drawn there, only the ship and the traced sky.
+        const inside = fall.active && fall.time > FALL_SPIRAL;
+        if (inside && fallLayers.current === null) {
+            fallLayers.current = camera.layers.mask;
+            sceneForLayers.traverse((object) => {
+                if ((object as THREE.Light).isLight) object.layers.enable(CROSSING_LAYER);
+            });
+            camera.layers.mask = (1 << 1) | (1 << 2) | (1 << CROSSING_LAYER);
+        } else if (!inside && fallLayers.current !== null) {
+            camera.layers.mask = fallLayers.current;
+            fallLayers.current = null;
+        }
+
+        const warped = bodyWarpActive();
+        if (warped) stretchMatrix(bodyWarp.axis, bodyWarp.stretch, bodyWarp.centre, bodyWarp.wobble, warpMatrix);
+        for (const group of [shipWarpRef.current, argoWarpRef.current]) {
+            if (!group) continue;
+            const on = warped && (group === shipWarpRef.current || mothership.docked);
+            if (on) group.matrix.copy(warpMatrix);
+            else if (!group.matrix.equals(IDENTITY)) group.matrix.identity();
+            else continue;
+            group.matrixWorldNeedsUpdate = true;
+        }
+
+        // The pulse drive's bubble: space outside it drawn in towards the heading, bluer ahead, redder
+        // to the sides; a ripple as it engages and as it drops out, when the squeeze snaps back past flat.
+        const drive = warpDrive.current;
+        const flying = !transit && !fall.active && runtime.mode === 'ship' && !ship.destroyed;
+        // Gentle at a low pulse, all of it at full: the square.
+        const target = flying ? ship.pulse * ship.pulse * (mothership.docked ? 0.85 : 1) : 0;
+        const stiffness = 34;
+        drive.speed += ((target - drive.compress) * stiffness - drive.speed * 2 * Math.sqrt(stiffness) * 0.3) * dt;
+        drive.compress += drive.speed * dt;
+        const perspective = camera as THREE.PerspectiveCamera;
+        if (ship.pulseEngaged !== drive.engaged) {
+            drive.engaged = ship.pulseEngaged;
+            if (flying) {
+                // (Dropping out: the squeeze lets go all at once.)
+                if (!drive.engaged) drive.speed -= 3.2 * Math.max(drive.compress, 0.25);
+                if (toFrame(warpCentre, camera, warpFrame)) addRipple(warpFrame, drive.engaged ? 0.9 : 1.25, 0.8, screenFx.bubbleRadius, 1.35);
+            }
+        }
+        const idle = Math.abs(drive.compress) < 0.002 && Math.abs(drive.speed) < 0.01;
+        if (idle) {
+            drive.compress = 0;
+            drive.speed = 0;
+        }
+        screenFx.compress = drive.compress;
+        screenFx.shift = flying ? ship.pulse : 0;
+        screenFx.wall = flying ? THREE.MathUtils.clamp(ship.pulse * 1.15, 0, 1) : 0;
+        if (!idle || screenFx.ripples.length > 0) {
+            // The heading in the frame, and the ship with the bubble round it.
+            warpPoint.copy(ship.velocity.lengthSq() > 1 ? ship.velocity : warpPoint.set(0, 0, -1).applyQuaternion(ship.quaternion)).normalize().multiplyScalar(1e5).add(camera.position);
+            toFrame(warpPoint, camera, screenFx.apex);
+            if (toFrame(warpCentre, camera, screenFx.bubble)) {
+                warpPoint.set(1, 0, 0).applyQuaternion(camera.quaternion).multiplyScalar(length * 0.62).add(warpCentre);
+                toFrame(warpPoint, camera, warpFrame);
+                screenFx.bubbleRadius = Math.hypot((warpFrame.x - screenFx.bubble.x) * perspective.aspect, warpFrame.y - screenFx.bubble.y);
+            } else screenFx.bubbleRadius = 0;
+        }
+    };
     const recordDeath = (world: string, cause: string, survived: number, time: number) => {
         const stats = runtime.stats;
         stats.deaths = (stats.deaths ?? 0) + 1;
@@ -732,27 +873,39 @@ export const Player = ({ runtime, input, start, region }: { runtime: ExpeditionR
             if (runtime.fall.active) {
                 // Falling into TON 618: the plunge flies the ship, and when the
                 // log ends a new ship leaves the wormhole by Saturn.
+                // (What ARGO says on the way down is voiced: Voices.tsx, voiceLines.ts.)
+                const before = runtime.fall.time;
                 if (!runtime.sites.open && !runtime.menuOpen && advanceFall(runtime.fall, ship, runtime.fall.hold ? 0 : dt)) runtime.events.fallDone();
+                const after = runtime.fall.time;
+                if (before < FALL_LOST_AT && after >= FALL_LOST_AT) {
+                    const death = countFallDeath(runtime.fall, runtime.stats, time);
+                    if (death) runtime.lastDeath = death;
+                }
                 updateEnvironment(runtime, ship.position);
             } else if (!paused && runtime.transit) {
                 // Down the throat (WormholeTransit.tsx): the ship is already at the far mouth,
                 // held there with the controls locked until the tunnel opens out.
                 const transit = runtime.transit;
                 const before = transit.t;
-                // Held short of opening out while the other system is built behind the film (WormholeFilm.tsx).
-                transit.t = runtime.loading ? Math.max(transit.t, Math.min(transit.t + dt, TRANSIT_HOLD)) : transit.t + dt;
-                const line = (at: number, text: string, key: string) => {
-                    if (before < at && transit.t >= at) say(runtime.argo, text, 'info', key);
-                };
-                line(0, 'Into the throat. Hold on.', `transit-in-${Math.floor(time)}`);
-                line(2.4, 'Tidal shear three g and holding. She was built for this.', `transit-mid-${Math.floor(time)}`);
-                line(5.2, 'There is the other side.', `transit-out-${Math.floor(time)}`);
+                // Held short of the far side while the other system is built behind the throat (region.ts):
+                // the sequence waits at its hold, and everything in it keeps moving on `clock`.
+                if (!transit.hold) {
+                    transit.clock += dt;
+                    const next = transit.t + dt;
+                    if (runtime.loading && next > TRANSIT_HOLD) {
+                        transit.held += Math.max(0, next - Math.max(transit.t, TRANSIT_HOLD));
+                        transit.t = Math.max(transit.t, TRANSIT_HOLD);
+                    } else transit.t = next;
+                }
+                void before;
                 input.pressed.clear();
                 input.lookX = 0;
                 input.lookY = 0;
                 ship.throttle = Math.max(ship.throttle, 0.4);
                 if (transit.t >= TRANSIT_SECONDS) {
                     runtime.transit = null;
+                    clearBodyWarp();
+                    screenFx.flash = 0;
                     runtime.events.transit(transit.to);
                 }
             } else if (!paused && mothership.docking) {
@@ -832,7 +985,13 @@ export const Player = ({ runtime, input, start, region }: { runtime: ExpeditionR
                         updateEnvironment(runtime, ship.position);
                         // The crossing plays out as a flight down the throat (WormholeTransit.tsx);
                         // the arrival is announced as it opens out.
-                        runtime.transit = { t: 0, to: other.id, axis: ship.velocity.lengthSq() > 1 ? ship.velocity.clone().normalize() : new THREE.Vector3(0, 0, -1).applyQuaternion(ship.quaternion) };
+                        const axis = ship.velocity.lengthSq() > 1 ? ship.velocity.clone().normalize() : new THREE.Vector3(0, 0, -1).applyQuaternion(ship.quaternion);
+                        const up = new THREE.Vector3(0, 1, 0).applyQuaternion(ship.quaternion);
+                        up.addScaledVector(axis, -up.dot(axis));
+                        if (up.lengthSq() < 1e-6) up.set(1, 0, 0).addScaledVector(axis, -axis.x);
+                        runtime.transit = { t: 0, clock: 0, held: 0, to: other.id, axis, up: up.normalize() };
+                        // The throat's surface gives way: a ripple through space from the middle of the view.
+                        addRipple(new THREE.Vector2(0.5, 0.52), 1.4, 0.9, 0.02, 1.4);
                         break;
                     }
                 }
@@ -1142,13 +1301,6 @@ export const Player = ({ runtime, input, start, region }: { runtime: ExpeditionR
         forward.set(0, 0, -1).applyQuaternion(cam.quaternion);
         shipUp.set(0, 1, 0).applyQuaternion(cam.quaternion);
         lookWorld.copy(ship.position).addScaledVector(forward, 40).addScaledVector(shipUp, 2.2);
-        if (runtime.transit) {
-            // Shaken in the throat: hardest in the middle of the crossing.
-            const k = Math.sin(Math.min(1, runtime.transit.t / TRANSIT_SECONDS) * Math.PI) * (mothership.docked ? 9 : 1.5);
-            lookWorld.x += (Math.sin(time * 37.1) + Math.sin(time * 23.7)) * k;
-            lookWorld.y += (Math.sin(time * 41.3) + Math.sin(time * 17.9)) * k;
-            lookWorld.z += Math.sin(time * 29.3) * k;
-        }
 
         // Keep the camera above the ground of the world it is near.
         const body = runtime.currentBody;
@@ -1178,10 +1330,37 @@ export const Player = ({ runtime, input, start, region }: { runtime: ExpeditionR
             perspective.fov = cam.fov;
             perspective.updateProjectionMatrix();
         }
+        // The crossing and the end of the fall have cameras of their own (crossing.ts, fall.ts).
+        const transit = runtime.transit;
+        if (transit) {
+            warpCentre.copy(ship.position).sub(runtime.origin);
+            crossingCamera(transit, warpCentre, mothership.docked ? MOTHERSHIP.length : 9, runtime.reducedMotion, shot);
+            if (!runtime.reducedMotion) {
+                // Shaken as the far side comes up.
+                const k = THREE.MathUtils.smoothstep(transit.t, BEAT.rush, BEAT.white) * (1 - THREE.MathUtils.smoothstep(transit.t, BEAT.white + 0.4, BEAT.out)) * (mothership.docked ? 2.5 : 0.08);
+                shot.position.x += (Math.sin(time * 37.1) + Math.sin(time * 23.7)) * k;
+                shot.position.y += (Math.sin(time * 41.3) + Math.sin(time * 17.9)) * k;
+            }
+            camera.position.copy(shot.position);
+            camera.up.copy(shot.up);
+            camera.lookAt(shot.target);
+            cam.fov = shot.fov;
+            if (Math.abs(perspective.fov - cam.fov) > 0.01) {
+                perspective.fov = cam.fov;
+                perspective.updateProjectionMatrix();
+            }
+            cameraWorld.copy(camera.position).add(runtime.origin);
+        } else if (runtime.fall.active && spaghettiShot(runtime.fall, ship, runtime.origin, shot, mothership.docked ? MOTHERSHIP.length : 9)) {
+            camera.position.copy(shot.position);
+            camera.up.copy(shot.up);
+            camera.lookAt(shot.target);
+            cameraWorld.copy(camera.position).add(runtime.origin);
+        }
         camera.updateMatrixWorld();
         runtime.camera.copy(cameraWorld);
         runtime.speed = ship.velocity.length();
         runtime.pulse = ship.pulse > 0.05;
+        updateSpacetime(camera, dt);
         runtime.hud.ship = ship;
         runtime.view.camera = camera;
     }, -2);
@@ -1191,6 +1370,12 @@ export const Player = ({ runtime, input, start, region }: { runtime: ExpeditionR
     // wormhole and black hole lensing do not.
     const { camera: mainCamera } = useThree();
     const playerRef = useRef<THREE.Group>(null);
+    const warpSources = () => {
+        const list: THREE.Object3D[] = [];
+        if (shipWarpRef.current) list.push(shipWarpRef.current);
+        if (argoWarpRef.current && mothership.docked) list.push(argoWarpRef.current);
+        return list;
+    };
     const groundDetailRef = useRef<THREE.Group>(null);
     // The one being played wears their own colours, fighter and suit (livery.ts).
     const [activeId, setActiveId] = useState(() => crew.members[crew.active].def.id);
@@ -1215,10 +1400,15 @@ export const Player = ({ runtime, input, start, region }: { runtime: ExpeditionR
     return (
         <>
             <group ref={playerRef}>
-                <Ship ref={shipRef} livery={LIVERIES[activeId]} />
+                <group ref={shipWarpRef} matrixAutoUpdate={false}>
+                    <Ship ref={shipRef} livery={LIVERIES[activeId]} />
+                </group>
                 <Astronaut ref={astronautRef} livery={LIVERIES[activeId]} />
                 <CrewFleet runtime={runtime} />
-                <MothershipView runtime={runtime} />
+                <group ref={argoWarpRef} matrixAutoUpdate={false}>
+                    <MothershipView runtime={runtime} />
+                </group>
+                <AfterimagesWatch sources={warpSources} />
                 <WormholeTransit runtime={runtime} />
                 {region === 'ton' && <Colonists runtime={runtime} />}
                 {region === 'ton' && <Waterfalls runtime={runtime} />}
@@ -1227,7 +1417,7 @@ export const Player = ({ runtime, input, start, region }: { runtime: ExpeditionR
                 <ExhaustTrails
                     runtime={runtime}
                     nozzles={() => shipRef.current?.nozzles ?? []}
-                    intensity={() => (ship.landed ? 0 : THREE.MathUtils.clamp((ship.velocity.length() - 50) / 320, 0, 1) * (0.6 + ship.boost * 0.4) + ship.pulse * 0.3)}
+                    intensity={() => (ship.landed || runtime.fall.active ? 0 : THREE.MathUtils.clamp((ship.velocity.length() - 50) / 320, 0, 1) * (0.6 + ship.boost * 0.4) + ship.pulse * 0.3)}
                 />
                 <SpeedStreaks
                     velocity={() => ship.velocity}
@@ -1250,6 +1440,7 @@ export const Player = ({ runtime, input, start, region }: { runtime: ExpeditionR
             <Asteroids runtime={runtime} input={input} />
             <Fishing runtime={runtime} tipOf={() => astronautRef.current?.toolTip ?? null} />
             <Wreck runtime={runtime} />
+            <ScreenWarpWatch quality={runtime.quality} />
         </>
     );
 };

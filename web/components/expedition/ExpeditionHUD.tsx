@@ -4,7 +4,8 @@ import { Apple, Gem, Landmark, PawPrint, ScrollText } from 'lucide-react';
 import { EXPEDITION_BODIES, findBody, formatDistance, type ExpeditionBody } from './bodies';
 import { findExpedition, startRun } from './expeditions';
 import { beginExpedition } from './Argo';
-import { fallStage } from './fall';
+import { fallClock, fallStage, formatShipTime } from './fall';
+import { BEAT } from './crossing';
 import { cue, type ExpeditionRuntime } from './runtime';
 import { directionToBody, fromStart, motionDate, turnWithWorld } from './motion';
 import type { ExpeditionInput } from './input';
@@ -169,6 +170,8 @@ interface Snapshot {
     /** The expedition under way: its name, what to do now, the live numbers. */
     expedition: { title: string; stage: string; detail: string } | null;
     deaths: number;
+    /** In the throat of a crossing (crossing.ts): the HUD steps aside for it, as it did for the film. */
+    crossing: boolean;
     /** A predator stalking (0.3..0.8) or charging (1) the explorer. */
     danger: number;
     /** By a sealed vault: its runes in the order to light them, how many are lit, the seconds left. */
@@ -758,7 +761,12 @@ const buildSnapshot = (runtime: ExpeditionRuntime, width: number, height: number
     // Falling into TON 618: the log tells what is happening.
     if (runtime.fall.active) {
         const stage = fallStage(runtime.fall.time);
-        objective = { title: stage.title, body: stage.body };
+        // The ship's own clock (fall.ts): the real times, days of them, shown fast.
+        const clock = fallClock(runtime.fall);
+        const reading = clock.sinceHorizon < 0
+            ? `Ship's clock: horizon in ${formatShipTime(-clock.sinceHorizon)}.`
+            : `Ship's clock: ${formatShipTime(clock.sinceHorizon)} since the horizon, ${formatShipTime(clock.left)} to the centre.`;
+        objective = { title: stage.title, body: `${stage.body} ${reading}` };
         prompts.length = 0;
     }
 
@@ -819,6 +827,7 @@ const buildSnapshot = (runtime: ExpeditionRuntime, width: number, height: number
             return run && def ? { title: def.title, ...def.status(run, runtime) } : null;
         })(),
         deaths: runtime.stats.deaths ?? 0,
+        crossing: !!runtime.transit && runtime.transit.t < BEAT.out + 0.3,
         danger: walker ? runtime.fauna.danger : 0,
         radio: radioSnapshot(runtime),
         scan: runtime.scan.life ? { name: runtime.scan.life.name, progress: runtime.scan.progress, known: runtime.stats.aliens.includes(runtime.scan.life.id) } : null,
@@ -1220,7 +1229,7 @@ export const ExpeditionHUD = ({ runtime, input, onExit, progress, graphics }: {
     const controls = s?.mode === 'walk' ? WALK_CONTROLS : SHIP_CONTROLS;
 
     return (
-        <div ref={rootRef} className={`expedition-hud${s?.discovery ? ' has-card' : ''}`} aria-live="polite">
+        <div ref={rootRef} className={`expedition-hud${s?.discovery ? ' has-card' : ''}${s?.crossing ? ' is-crossing' : ''}`} aria-live="polite">
             {s && (
                 <>
                     <div className="expedition-hud__left">

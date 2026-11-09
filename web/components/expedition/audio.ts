@@ -3,7 +3,10 @@
  * recordings: every layer follows the game as it happens (the engine's pitch
  * with the throttle, the wind with the air and the speed, footsteps with the
  * ground underfoot), it costs no downloads, and the preview host, which lets
- * a page fetch only its own files, cannot block it.
+ * a page fetch only its own files, cannot block it. The exceptions are
+ * recorded: the crew's and ARGO's voices, and the score of the crossing and of
+ * the fall into TON 618 (Voices.tsx), fetched from the game's own files when
+ * they are near.
  *
  * Continuous layers are built once and their levels steered every frame
  * (Soundscape.tsx); short sounds ("cues") are synthesised as they happen.
@@ -23,7 +26,7 @@ export type Surface = 'grass' | 'sand' | 'gravel' | 'snow' | 'regolith' | 'water
  * What the player can turn up, down or off on its own (Settings, SoundPanel.tsx): every sound goes
  * through one of these on its way to its bus, the music through its own.
  */
-export type SoundChannel = 'ship' | 'body' | 'world' | 'radio' | 'alerts';
+export type SoundChannel = 'ship' | 'body' | 'world' | 'radio' | 'alerts' | 'voice';
 export interface SoundVolumes {
     master: number;
     music: number;
@@ -32,8 +35,20 @@ export interface SoundVolumes {
     world: number;
     radio: number;
     alerts: number;
+    voice: number;
 }
-export const FULL_VOLUME: SoundVolumes = { master: 1, music: 1, ship: 1, body: 1, world: 1, radio: 1, alerts: 1 };
+export const FULL_VOLUME: SoundVolumes = { master: 1, music: 1, ship: 1, body: 1, world: 1, radio: 1, alerts: 1, voice: 1 };
+
+/** A recording playing (a voice or the score): where it is in itself, and how to stop it. */
+export interface Playing {
+    /** Seconds into the recording now. */
+    position: () => number;
+    /** Fade out over `fade` seconds, then stop. */
+    stop: (fade?: number) => void;
+    ended: () => boolean;
+    /** Bring its level to `value` (1: as asked when it began) over about `smoothing` seconds. */
+    level: (value: number, smoothing?: number) => void;
+}
 /** Which channel each one-off sound plays on. */
 const CUE_CHANNEL: Record<CueName, SoundChannel> = {
     notice: 'alerts', menu: 'alerts', waypoint: 'alerts', chapter: 'alerts', site: 'alerts', scan: 'alerts', craft: 'alerts', radio: 'radio',
@@ -154,6 +169,8 @@ const MASTER = 1.3;
 const SFX = 0.9;
 const AMBIENCE = 0.75;
 const MUSIC = 0.32;
+/** The voices' own bus: dialogue is not one of the sounds B switches off. */
+const VOICES = 1.1;
 
 export class SoundEngine {
     ctx: Ctx | null = null;
@@ -187,6 +204,11 @@ export class SoundEngine {
     private alarmPhase = 0;
     private breathPhase = 0;
     private stopped = false;
+    /** Recordings fetched and decoded, by address (null: could not be). */
+    private recordings = new Map<string, Promise<AudioBuffer | null>>();
+    private decoded = new Map<string, AudioBuffer>();
+    /** A recorded score is playing: the generative music makes way. */
+    private scoring = 0;
 
     /**
      * Make the audio graph (once); a live context may start suspended until
@@ -235,7 +257,8 @@ export class SoundEngine {
             gain.connect(into);
             return gain;
         };
-        this.channels = { ship: channel('ship', this.sfx), body: channel('body', this.sfx), world: channel('world', this.ambience), radio: channel('radio', this.sfx), alerts: channel('alerts', this.sfx) };
+        const voices = this.bus(VOICES);
+        this.channels = { ship: channel('ship', this.sfx), body: channel('body', this.sfx), world: channel('world', this.ambience), radio: channel('radio', this.sfx), alerts: channel('alerts', this.sfx), voice: channel('voice', voices) };
         this.current = this.channels.alerts;
         this.reverb = ctx.createConvolver();
         this.reverb.buffer = reverbImpulse(ctx, 4.5, 2.6);
@@ -313,6 +336,73 @@ export class SoundEngine {
         this.sfx.gain.setTargetAtTime(on ? SFX : 0, this.ctx.currentTime, 0.08);
         this.ambience.gain.setTargetAtTime(on ? AMBIENCE : 0, this.ctx.currentTime, 0.08);
         this.sfxSend.gain.setTargetAtTime(on ? 1 : 0, this.ctx.currentTime, 0.08);
+    }
+
+    // ---- Recordings ---------------------------------------------------------------
+
+    /** Fetch and decode a recording once (a game file: `url` under the site's base). */
+    load(url: string): Promise<AudioBuffer | null> {
+        const ctx = this.ctx;
+        if (!ctx) return Promise.resolve(null);
+        let loading = this.recordings.get(url);
+        if (!loading) {
+            loading = fetch(url)
+                .then((response) => (response.ok ? response.arrayBuffer() : Promise.reject(new Error(String(response.status)))))
+                .then((data) => ctx.decodeAudioData(data))
+                .then((buffer) => {
+                    this.decoded.set(url, buffer);
+                    return buffer;
+                })
+                .catch(() => null);
+            this.recordings.set(url, loading);
+        }
+        return loading;
+    }
+
+    /** A recording already decoded, or null (not asked for, still coming, or failed). */
+    ready(url: string) {
+        return this.decoded.get(url) ?? null;
+    }
+
+    /**
+     * Play a decoded recording from `offset` seconds: a voice on the voices' channel, or the score on the
+     * music's bus (louder than the generative music, which makes way while it plays). Nothing until the
+     * player has interacted with the page (browsers start sound only then).
+     */
+    play(url: string, kind: 'voice' | 'score', offset = 0, fadeIn = 0.03, level = 1): Playing | null {
+        const ctx = this.ctx;
+        const buffer = this.decoded.get(url);
+        if (!ctx || !buffer || !this.live || offset >= buffer.duration) return null;
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        const gain = ctx.createGain();
+        const t = ctx.currentTime;
+        gain.gain.setValueAtTime(0, t);
+        gain.gain.linearRampToValueAtTime(level, t + Math.max(fadeIn, 0.005));
+        source.connect(gain).connect(kind === 'voice' ? this.channels.voice : this.music);
+        const start = Math.max(0, offset);
+        source.start(t, start);
+        let done = false;
+        if (kind === 'score') this.scoring += 1;
+        source.onended = () => {
+            if (!done && kind === 'score') this.scoring = Math.max(0, this.scoring - 1);
+            done = true;
+        };
+        return {
+            position: () => start + (ctx.currentTime - t),
+            ended: () => done,
+            level: (value: number, smoothing = 0.25) => {
+                if (!done) gain.gain.setTargetAtTime(level * value, Math.max(ctx.currentTime, t + fadeIn), smoothing);
+            },
+            stop: (fade = 0.3) => {
+                if (done) return;
+                const now = ctx.currentTime;
+                gain.gain.cancelScheduledValues(now);
+                gain.gain.setValueAtTime(gain.gain.value, now);
+                gain.gain.linearRampToValueAtTime(0, now + Math.max(fade, 0.01));
+                try { source.stop(now + Math.max(fade, 0.01) + 0.02); } catch { /* already stopped */ }
+            },
+        };
     }
 
     // ---- Continuous layers --------------------------------------------------------
@@ -574,7 +664,8 @@ export class SoundEngine {
             this.chordIndex = 0;
         }
         const style = MOODS[mood];
-        if (!style.chords.length || !this.musicOn) return;
+        // (Not over a recorded score: the crossing's or the fall's.)
+        if (!style.chords.length || !this.musicOn || this.scoring > 0) return;
         if (t >= this.nextChord) {
             const chord = style.chords[this.chordIndex % style.chords.length];
             this.chordIndex += 1;

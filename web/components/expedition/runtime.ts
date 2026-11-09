@@ -27,6 +27,7 @@ import type { Band, RadioReading } from './radio';
 import type { LifeForm } from './aliens';
 import type { Vault, VaultFrame } from './vaults';
 import type { Region } from './region';
+import type { Transit } from './crossing';
 
 export interface CrystalCluster {
     id: string;
@@ -213,10 +214,11 @@ export interface ExpeditionRuntime {
     /** The mothership, the only ship that can cross the wormhole (mothership.ts); made by Player. */
     mothership: Mothership | null;
     /**
-     * Crossing a wormhole (WormholeTransit.tsx): seconds in, the mouth it comes out of, and the
-     * way out (game frame). The ship is already at the far mouth, held while the tunnel plays.
+     * Crossing a wormhole (crossing.ts, WormholeTransit.tsx): how far through the sequence, the mouth
+     * it comes out of, and the way out (game frame). The ship is already at the far mouth, held while
+     * the sequence plays.
      */
-    transit: { t: number; to: string; axis: THREE.Vector3 } | null;
+    transit: Transit | null;
     /**
      * The system the player is in (region.ts): only its worlds are built. `loading` is true from
      * the moment it changes until the other system is built and its shaders are ready, while the
