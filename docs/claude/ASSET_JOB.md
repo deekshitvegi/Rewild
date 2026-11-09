@@ -224,3 +224,11 @@ on 4 cores made every frame take 7 minutes).
     flying down from orbit, so test views in the order the player meets them, not one at a time.
   - Noise drawn down to two point spacings lines up with the grid. Stop the bumps at six; the normal maps carry the rest.
   - The first flight after a material change stalls (300-400 ms frames) while shaders compile. Time the second flight.
+- TON 618 (9 Nov):
+  - Render a sky object offline first (numpy, the same maths) to settle size and framing against the reference
+    in seconds. 13 radii filled the sky; 20 matched the key art.
+  - The procedural mesh's texture coordinates are half floats: positions in metres step every 0.5 m at 600 m, and a
+    2 m scan turned to bar codes. Never pass positions through texture coordinates; use the vertex's local position.
+  - A bright sky object in the real-time sky light warms everything it lights: the disk turned the teal ground beige.
+  - A broad glow in front of a black hole fills its shadow with grey: keep the glow faint and let bloom hug the disk.
+  - Check what a still frames before judging it: at 35 degrees up the hole sat half out of every view.

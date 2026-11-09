@@ -41,12 +41,28 @@ LAYERS = {
 }
 
 R_HAVEN = 573_000_000.0  # cm (5,730 km)
-TON618_ELEVATION = 35.0   # degrees above the colony's horizon, toward +X (east)
+TON618_ELEVATION = 25.0   # degrees above the colony's horizon, toward +X (east). At 35 the hole and the horizon could not
+                          # share one frame from the colony, as they do in the key art (9 Nov).
 TON618_LUX = 60_000.0     # the disk's light at Haven
 TON618_COLOUR = (255, 228, 200)  # warm, a little less than #ffd8b0: at #ffd8b0 the teal ground went olive
 # Degrees. 8 made a flat, hard-edged plate of glare on the sea: Unreal reflects a wide light as one uniform disc
 # (9 Nov). Its true look on the water comes with the hole drawn in the sky (HAVEN.md step 4); 2.5 keeps soft shadows.
 TON618_ANGLE = 2.5
+# TON 618 (HAVEN.md, "TON 618 in the sky"): the web version's ray tracer, at the figures the offline renders matched
+# to the key art. Lengths in Schwarzschild radii.
+HOLE_R0 = 20.0          # Haven's distance from the hole
+HOLE_HEIGHT = 2.4       # Haven above the disk's plane
+HOLE_R_IN, HOLE_R_OUT = 1.6, 7.7
+HOLE_ROLL = 12.0        # degrees the band is tilted in the sky, rising to the right
+HOLE_DOPPLER = 0.35     # how much of the gas's orbital speed shows (Interstellar toned it down too)
+HOLE_BRIGHT = 36000.0   # emissive at temperature 1 (nits): 80,000 washed it to cream; 45,000 still pale beside the key art
+HOLE_SPIN = 0.04        # turn rate at the inner edge, radians a second (slower outward, as Kepler)
+HOLE_STEPS = 400
+HOLE_REACH = 50.0       # degrees from the hole's centre traced; beyond, nothing is drawn
+HOLE_AIR = 0.92         # Haven's thin air lets this much of the hole's light through toward the colony
+HOLE_GLOW = 1000.0      # nits at the centre of the air's glow round the disk (4,000 greyed the shadow)
+SKY_RADIUS = 1.0e10     # cm: the sky sphere the hole is drawn on, 100,000 km round the planet
+
 EV100 = 13.5  # with the thinner sky of round 6 (the ground was 0.5-0.6 stop under the key art at 14)
 
 # Linear albedo of each cover (HAVEN.md; tuned on the stills against the key art).
@@ -126,7 +142,9 @@ def f3(c):
 
 
 GROUND_HLSL = """
-float3 P = float3(UV0.x, UV0.y, UV1.x);
+// Metres from the tile's texture origin: the vertex's place in its tile plus the tile's offset (full precision; the
+// mesh's texture coordinates are half floats and drew bar codes 600 m out).
+float3 P = LP / 100.0 + float3(TOX, TOY, TOZ);
 float3 n = normalize(Nrm);
 float3 bw = pow(abs(n), 6.0);
 bw /= (bw.x + bw.y + bw.z);
@@ -222,7 +240,7 @@ float3 c = (W.x * grass + W.y * rock + W.z * sand + W.w * bed) * broad * occ;
 
 Rough = lerp(dot(W, float4(0.92, 0.8, 0.86, 0.65)), dot(W, float4(gr, rr, sr, br)), near) - 0.25 * wet;
 // Grass is a canopy that drinks light: little specular, or it mirrors the warm horizon and goes olive far off.
-Spec = dot(W, float4(0.2, 0.45, 0.4, 0.5));
+Spec = dot(W, float4(0.06, 0.45, 0.4, 0.5));  // (0.2 still went beige looking toward TON 618, low in the sky)
 // The scans' relief: the near layers out to 150 m, the aerial ones out to 6 km.
 float3 dn = W.x * (gn - n) + W.y * (rn - n) + W.z * (sn - n) + W.w * (bn - n);
 float3 dm = W.x * (gmn - n) + W.y * (rmn - n);
@@ -230,8 +248,124 @@ NormalWS = normalize(n + dn * near + dm * (mid * (1.0 - near) * 0.3));  // (0.7 
 return c;
 """
 
+TON618_HLSL = """
+// The camera's ray, into the hole's frame (y is the disk's axis); Haven's direction from the hole is OBS.
+float3 view = -normalize(V);
+float3 rd = float3(dot(view, HX), dot(view, HY), dot(view, HZ));
+float3 e1 = OBS;
+float a = dot(rd, e1);
+float3 radiance = 0;
+// Haven's air scatters a faint blue-white glow round the disk, longest along the band (as in the key art).
+float3 bandAxis = normalize(cross(-e1, float3(0, 1, 0)));
+float3 upAxis = cross(bandAxis, -e1);
+float gx = dot(rd, bandAxis) / 0.42, gy = dot(rd, upAxis) / 0.17;
+float3 glow = float3(0.55, 0.70, 1.0) * GLOW * exp(-(gx * gx + gy * gy)) * step(0.0, -a);
+if (a > -COS_REACH) return glow;
+float3 nrm = cross(e1, rd);
+float nl = length(nrm);
+if (nl < 1e-6) return glow;
+nrm /= nl;
+float3 e2 = cross(nrm, e1);
+float b = max(dot(rd, e2), 1e-6);
+float r0 = R0;
+// Binet's equation for light round a Schwarzschild hole (u = 1 / r, r_s = 1), traced back from the camera with
+// fourth-order Runge-Kutta in the angle round the hole (port of web/components/expedition/BlackHole.tsx).
+float2 s = float2(1.0 / r0, -a * sqrt(max(1.0 - 1.0 / r0, 0.0)) / (b * r0));
+float phi = 0.0;
+float nextCross = 1e9;
+if (abs(e1.y) + abs(e2.y) > 1e-5)
+{
+    nextCross = atan2(-e1.y, e2.y);
+    if (nextCross <= 1e-4) nextCross += 3.14159265;
+}
+float images = 0.0;
+float trans = 1.0;
+// The disk's pattern turns with the gas, the inner parts faster; two copies half a cycle apart crossfade, so the
+// shear never winds up over a long game.
+float cycle = frac(T / 240.0);
+float ta = cycle * 240.0;
+float tb = frac(cycle + 0.5) * 240.0;
+float wb = abs(cycle * 2.0 - 1.0);
+#define HASH(p) frac(sin(dot(p, float3(127.1, 311.7, 74.7))) * 43758.5453)
+#define VNOISE(p, o) { float3 i_ = floor(p); float3 f_ = frac(p); float3 u_ = f_ * f_ * (3.0 - 2.0 * f_); \
+    o = lerp(lerp(lerp(HASH(i_), HASH(i_ + float3(1, 0, 0)), u_.x), lerp(HASH(i_ + float3(0, 1, 0)), HASH(i_ + float3(1, 1, 0)), u_.x), u_.y), \
+             lerp(lerp(HASH(i_ + float3(0, 0, 1)), HASH(i_ + float3(1, 0, 1)), u_.x), lerp(HASH(i_ + float3(0, 1, 1)), HASH(i_ + float3(1, 1, 1)), u_.x), u_.y), u_.z) * 2.0 - 1.0; }
+#define FBM(p, n, gain, o) { float amp_ = 0.5; float3 pp_ = p; o = 0.0; for (int k_ = 0; k_ < n; k_++) { float v_; VNOISE(pp_, v_); o += amp_ * v_; amp_ *= gain; pp_ *= 2.0; } }
+// The gas's density at radius r, angle ang, for time t.
+#define DENSITY(r, ang0, t, o) { float ang_ = ang0 - t * SPIN * pow(r / RIN, -1.5); float lr_ = log(r); \
+    float3 q_ = float3(cos(ang_) * 2.2, sin(ang_) * 2.2, lr_ * 3.5); float broad_; FBM(q_, 3, 0.5, broad_); \
+    float3 q2_ = float3(cos(ang_) * 5.0, sin(ang_) * 5.0, lr_ * 18.0 + broad_ * 3.0); float streak_; FBM(q2_, 3, 0.5, streak_); \
+    o = clamp(0.6 + broad_ * 0.6 + streak_ * 0.45, 0.05, 1.3); }
+[loop] for (int i = 0; i < STEPS; i++)
+{
+    float h = lerp(0.24, 0.075, smoothstep(0.03, 0.22, s.x));
+    h = lerp(h, 0.012, smoothstep(0.25, 0.62, s.x));
+    h = min(h, 0.08 * max(s.x, 1.0) / max(abs(s.y), 1e-4));
+    float2 k1 = float2(s.y, -s.x + 1.5 * s.x * s.x);
+    float2 s2 = s + 0.5 * h * k1;
+    float2 k2 = float2(s2.y, -s2.x + 1.5 * s2.x * s2.x);
+    float2 s3 = s + 0.5 * h * k2;
+    float2 k3 = float2(s3.y, -s3.x + 1.5 * s3.x * s3.x);
+    float2 s4 = s + h * k3;
+    float2 k4 = float2(s4.y, -s4.x + 1.5 * s4.x * s4.x);
+    float2 nxt = s + h / 6.0 * (k1 + 2.0 * k2 + 2.0 * k3 + k4);
+    float nphi = phi + h;
+    if (nphi >= nextCross && images < 4.0)
+    {
+        float t = (nextCross - phi) / h;
+        float u = lerp(s.x, nxt.x, t);
+        float du = lerp(s.y, nxt.y, t);
+        if (u > 0.0 && u < 1.0)
+        {
+            float3 radial = cos(nextCross) * e1 + sin(nextCross) * e2;
+            float3 around = -sin(nextCross) * e1 + cos(nextCross) * e2;
+            float3 hit = radial / u;
+            // the trace runs backward; the light travels the other way
+            float3 travel = -normalize(radial * (-du / (u * u)) + around / u);
+            float r = length(hit.xz);
+            float edge = smoothstep(RIN, RIN + 0.4, r) * (1.0 - smoothstep(ROUT * 0.6, ROUT, r));
+            if (edge > 0.0)
+            {
+                float ang = atan2(hit.z, hit.x);
+                float da, db;
+                DENSITY(r, ang, ta, da)
+                DENSITY(r, ang, tb, db)
+                float density = edge * lerp(da, db, wb);
+                // a thin disk's temperature, highest just outside its inner edge
+                float x = RIN / r;
+                float temperature = 1.6 * pow(x, 0.75) * pow(max(1.0 - sqrt(x) * 0.96, 0.0), 0.25);
+                // gravity and (toned down) the gas's motion shift its light
+                float beta = DOPPLER * min(sqrt(0.5 / max(r - 1.0, 1e-3)), 0.5);
+                float3 motion = normalize(float3(-hit.z, 0.0, hit.x));
+                float g = sqrt(1.0 - 1.0 / r) * sqrt(1.0 - beta * beta) / (1.0 - beta * dot(motion, travel));
+                float tt = temperature * g;
+                // the key art's palette: dusky rose at the cool rim, peach, white-peach at the hot edge
+                float3 c = lerp(float3(0.30, 0.08, 0.10), float3(0.95, 0.34, 0.18), smoothstep(0.15, 0.5, tt));
+                c = lerp(c, float3(1.0, 0.54, 0.30), smoothstep(0.45, 0.85, tt));
+                c = lerp(c, float3(1.0, 0.80, 0.62), smoothstep(0.8, 1.2, tt));
+                c = lerp(c, float3(0.86, 0.90, 1.0), smoothstep(1.2, 1.9, tt));
+                // the key art's blue-white at the disk's cool outer reaches
+                c = lerp(c, float3(0.50, 0.66, 1.0) * dot(c, float3(0.3, 0.5, 0.2)) * 2.0, smoothstep(0.45, 0.9, r / ROUT) * 0.9);
+                float3 col = c * density * g * g * g * (images >= 1.0 ? 0.8 : 1.0);
+                float alpha = clamp(density * 0.9, 0.0, 0.96);
+                radiance += trans * col * alpha;
+                trans *= 1.0 - alpha;
+            }
+        }
+        images += 1.0;
+        nextCross += 3.14159265;
+    }
+    if (nxt.x >= 1.0 && nxt.y > 0.0) break;  // through the horizon
+    if (nxt.x <= 0.0) break;                 // escaped
+    if (trans < 0.01) break;
+    s = nxt;
+    phi = nphi;
+}
+return radiance * BRIGHT * AIR + glow;
+"""
+
 SEA_HLSL = """
-float3 P = float3(UV0.x, UV0.y, UV1.x);
+float3 P = LP / 100.0 + float3(TOX, TOY, TOZ);
 float3 n = normalize(Nrm);
 float fade = saturate(1.0 - Depth / 400000.0);  // (PixelDepth is in cm: the waves are drawn out to 4 km)
 // Waves whose wave vectors are whole numbers of cycles per 2,048 m on each axis, so they line up across tiles
@@ -255,6 +389,18 @@ return normalize(n - g * fade);
 """
 
 
+def tile_position(mat, c, x):
+    """The vertex's position in its tile (cm) and the tile's offset from its texture origin (m, custom primitive
+    data 0-2, set by RewildPlanet), into the custom node's LP and TOX/TOY/TOZ."""
+    lp = node(mat, unreal.MaterialExpressionLocalPosition, x, -420)
+    mel.connect_material_expressions(lp, "", c, "LP")
+    for i, pin in enumerate(("TOX", "TOY", "TOZ")):
+        p = node(mat, unreal.MaterialExpressionScalarParameter, x, -340 + 70 * i, parameter_name=pin)
+        p.set_editor_property("use_custom_primitive_data", True)
+        p.set_editor_property("primitive_data_index", i)
+        mel.connect_material_expressions(p, "", c, pin)
+
+
 def ground_material(scans, info):
     folder = DEST + "/Materials"
     mat = fresh(unreal.Material, "M_PlanetGround", unreal.MaterialFactoryNew(), folder)
@@ -270,7 +416,7 @@ def ground_material(scans, info):
         values[key + "_S"] = f"{size:.1f}"
     for k in sorted(values, key=len, reverse=True):  # longest first: GRASSMID_MEAN before GRASS_MEAN
         code = code.replace(k, values[k])
-    pins = ["UV0", "UV1", "Nrm", "Wrgb", "Wa", "TW", "Depth"]
+    pins = ["LP", "TOX", "TOY", "TOZ", "Nrm", "Wrgb", "Wa", "TW", "Depth"]
     for layer in LAYERS:
         pins += [layer + "A", layer + "B"]
     c = custom(mat, -500, 0, "Ground", code, pins, unreal.CustomMaterialOutputType.CMOT_FLOAT3,
@@ -281,8 +427,7 @@ def ground_material(scans, info):
     vc = node(mat, unreal.MaterialExpressionVertexColor, -1300, 0)
     nrm = node(mat, unreal.MaterialExpressionVertexNormalWS, -1300, 150)
     depth = node(mat, unreal.MaterialExpressionPixelDepth, -1300, 230)
-    mel.connect_material_expressions(uv[0], "", c, "UV0")
-    mel.connect_material_expressions(uv[1], "", c, "UV1")
+    tile_position(mat, c, -1300)
     mel.connect_material_expressions(uv[2], "", c, "TW")
     mel.connect_material_expressions(vc, "", c, "Wrgb")
     mel.connect_material_expressions(vc, "A", c, "Wa")
@@ -310,11 +455,9 @@ def sea_material():
     mat = fresh(unreal.Material, "M_PlanetSea", unreal.MaterialFactoryNew(), folder)
     mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_SINGLE_LAYER_WATER)
     mat.set_editor_property("tangent_space_normal", False)
-    c = custom(mat, -500, 0, "Waves", SEA_HLSL, ["UV0", "UV1", "Nrm", "Depth", "T"],
+    c = custom(mat, -500, 0, "Waves", SEA_HLSL, ["LP", "TOX", "TOY", "TOZ", "Nrm", "Depth", "T"],
                unreal.CustomMaterialOutputType.CMOT_FLOAT3)
-    for i, pin in enumerate(("UV0", "UV1")):
-        mel.connect_material_expressions(node(mat, unreal.MaterialExpressionTextureCoordinate, -900, -200 + 90 * i,
-                                              coordinate_index=i), "", c, pin)
+    tile_position(mat, c, -900)
     mel.connect_material_expressions(node(mat, unreal.MaterialExpressionVertexNormalWS, -900, 0), "", c, "Nrm")
     mel.connect_material_expressions(node(mat, unreal.MaterialExpressionPixelDepth, -900, 80), "", c, "Depth")
     mel.connect_material_expressions(node(mat, unreal.MaterialExpressionTime, -900, 160), "", c, "T")
@@ -373,6 +516,72 @@ def far_sea_material():
     return mat
 
 
+def hole_frame():
+    """The hole's frame in the world (x, y = the disk's axis, z) and Haven's direction from it, in that frame."""
+    def norm(v):
+        n = math.sqrt(sum(c * c for c in v))
+        return tuple(c / n for c in v)
+
+    def dot(a, b):
+        return sum(x * y for x, y in zip(a, b))
+
+    def cross(a, b):
+        return (a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0])
+
+    def add(*vs):
+        return tuple(sum(c) for c in zip(*vs))
+
+    def mul(v, k):
+        return tuple(c * k for c in v)
+
+    e = math.radians(TON618_ELEVATION)
+    toward = (math.cos(e), 0.0, math.sin(e))       # from the colony to the hole
+    obs = mul(toward, -1.0)                          # from the hole to Haven
+    up = norm(add((0.0, 0.0, 1.0), mul(toward, -toward[2])))
+    side = cross(toward, up)
+    roll = math.radians(HOLE_ROLL)
+    w = add(mul(up, math.cos(roll)), mul(side, math.sin(roll)))
+    el = math.asin(HOLE_HEIGHT / HOLE_R0)
+    ny = norm(add(mul(obs, math.sin(el)), mul(w, math.cos(el))))  # the disk's axis
+    nx = norm(cross(ny, toward))
+    nz = cross(nx, ny)
+    return nx, ny, nz, (dot(obs, nx), dot(obs, ny), dot(obs, nz))
+
+
+def ton618_material():
+    """TON 618, traced per pixel and added over Haven's sky (unlit, additive: behind the hole there is only dark
+    space, so the shadow shows just the air in front of it, as the rest of the sky does)."""
+    folder = DEST + "/Materials"
+    mat = fresh(unreal.Material, "M_TON618", unreal.MaterialFactoryNew(), folder)
+    mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_UNLIT)
+    mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_ADDITIVE)
+    mat.set_editor_property("two_sided", True)
+    mat.set_editor_property("translucency_pass", unreal.MaterialTranslucencyPass.MTP_BEFORE_DOF)
+    for prop in ("use_translucency_vertex_fog", "apply_fogging", "apply_cloud_fogging"):
+        try:
+            mat.set_editor_property(prop, False)  # the air is already in the sky behind it
+        except Exception:  # noqa: BLE001
+            pass
+    nx, ny, nz, obs = hole_frame()
+    code = TON618_HLSL
+    vals = {
+        "COS_REACH": f"{math.cos(math.radians(HOLE_REACH)):.6f}", "STEPS": str(HOLE_STEPS),
+        "R0": f"{HOLE_R0:.3f}", "RIN": f"{HOLE_R_IN:.3f}", "ROUT": f"{HOLE_R_OUT:.3f}",
+        "DOPPLER": f"{HOLE_DOPPLER:.3f}", "SPIN": f"{HOLE_SPIN:.4f}", "BRIGHT": f"{HOLE_BRIGHT:.1f}", "AIR": f"{HOLE_AIR:.3f}",
+        "GLOW": f"{HOLE_GLOW:.1f}",
+        "HX": f3(nx), "HY": f3(ny), "HZ": f3(nz), "OBS": f3(obs),
+    }
+    for k in sorted(vals, key=len, reverse=True):
+        code = code.replace(k, vals[k])
+    c = custom(mat, -500, 0, "TON 618", code, ["V", "T"], unreal.CustomMaterialOutputType.CMOT_FLOAT3)
+    mel.connect_material_expressions(node(mat, unreal.MaterialExpressionCameraVectorWS, -900, 0), "", c, "V")
+    mel.connect_material_expressions(node(mat, unreal.MaterialExpressionTime, -900, 100), "", c, "T")
+    mel.connect_material_property(c, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+    mel.recompile_material(mat)
+    assets.save_loaded_asset(mat)
+    return mat
+
+
 def spawn(cls, loc=unreal.Vector(0, 0, 0), rot=unreal.Rotator(0, 0, 0), label=None):
     a = actors.spawn_actor_from_class(cls, loc, rot)
     a.set_editor_property("tags", [TAG])
@@ -394,7 +603,7 @@ def open_level():
             actors.destroy_actor(a)
 
 
-def build_level(ground, sea, far_sea):
+def build_level(ground, sea, far_sea, hole):
     open_level()
     world = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world()
     ws = world.get_world_settings()
@@ -433,7 +642,7 @@ def build_level(ground, sea, far_sea):
         "auto_exposure_apply_physical_camera_exposure": False,
         "auto_exposure_bias": -EV100,
         "vignette_intensity": 0.2,
-        "bloom_intensity": 0.25,  # the default flared the light's reflection on the sea into a white disc
+        "bloom_intensity": 0.45,  # 0.675 (the default) flared the sea's glint; 0.25 left TON 618 without its glow
         "blue_correction": 0.6,  # the default; 1.0 (right for the limb of Earth) greyed the teal
         "lens_flare_intensity": 0.0,
         "expand_gamut": 0.0,
@@ -443,6 +652,24 @@ def build_level(ground, sea, far_sea):
     ppv.set_editor_property("settings", s)
 
     spawn(unreal.PlayerStart, unreal.Vector(0, 0, 100_000.0), label="Start")
+
+    # TON 618 on a sphere 100,000 km round the planet's centre (the camera never leaves it; the material looks only
+    # at the view's direction, so where on it a pixel lies does not matter).
+    sphere = unreal.load_asset("/Engine/EngineSky/SM_SkySphere")
+    sky = spawn(unreal.StaticMeshActor, unreal.Vector(0, 0, -R_HAVEN), label="TON 618")
+    smc = sky.static_mesh_component
+    smc.set_static_mesh(sphere)
+    smc.set_mobility(unreal.ComponentMobility.MOVABLE)
+    radius = sphere.get_bounds().sphere_radius
+    sky.set_actor_scale3d(unreal.Vector(1, 1, 1) * (SKY_RADIUS / radius))
+    smc.set_material(0, hole)
+    smc.set_cast_shadow(False)
+    smc.set_editor_property("translucency_sort_priority", -100)
+    smc.set_editor_property("visible_in_ray_tracing", False)
+    # Out of the sky light: in it, the disk's peach light warmed Haven's teal ground to beige (9 Nov).
+    for prop in ("visible_in_real_time_sky_captures", "visible_in_reflection_captures"):
+        smc.set_editor_property(prop, False)
+    smc.set_editor_property("bounds_scale", 1.0)
 
     if not levels.save_current_level():
         raise RuntimeError("could not save " + LEVEL)
@@ -461,7 +688,7 @@ def main():
         scans = {(scan, part): import_scan(scan, part) for scan, _ in LAYERS.values() for part in ("A", "B")}
         ground = ground_material(scans, info)
         sea = sea_material()
-        build_level(ground, sea, far_sea_material())
+        build_level(ground, sea, far_sea_material(), ton618_material())
         shots.finish(True)
     except Exception as e:  # noqa: BLE001
         shots.fail(e)

@@ -106,6 +106,7 @@ namespace
 		const FVector3d Centre = P[At(TileN / 2, TileN / 2)];
 		const FVector3d Origin = TextureOrigin(Centre);
 		Out.Centre = Centre;
+		Out.TexOffset = Centre - Origin;
 
 		// The error: how far the children (twice the detail) would move the surface, at the middle of every cell,
 		// and never less than the flat cells' sag across the sphere's curve.
@@ -369,7 +370,7 @@ void ARewildPlanet::SetupSky()
 		Sky->SetRayleighExponentialDistribution(8.5f);
 		// Little haze: at 0.006 (Earth's is 0.004) the warm haze drowned the teal (grass measured 59, 66, 42).
 		Sky->SetMieScatteringScale(0.0008f);
-		Sky->SetMieAnisotropy(0.8f);
+		Sky->SetMieAnisotropy(0.6f);  // (at 0.8 the haze toward TON 618, low in the sky, washed the teal ground beige)
 		Sky->SetMultiScatteringFactor(0.6f);
 		Sky->SetGroundAlbedo(FColor(18, 52, 44));
 	}
@@ -652,6 +653,7 @@ void ARewildPlanet::Upload(FTile& T)
 	T.Mesh = AcquireMesh();
 	UProceduralMeshComponent* Mesh = Meshes[T.Mesh];
 	Mesh->SetRelativeLocation(FVector(M.Centre * 100.0));
+	Mesh->SetCustomPrimitiveDataVector3(0, FVector(M.TexOffset));
 	TArray<FProcMeshTangent> Tangents;
 	Tangents.Reserve(M.Tangents.Num());
 	for (const FVector& Tn : M.Tangents)

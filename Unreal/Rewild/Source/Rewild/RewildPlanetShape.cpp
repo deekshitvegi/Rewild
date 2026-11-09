@@ -115,7 +115,7 @@ TSharedPtr<const FRewildPlanetShape, ESPMode::ThreadSafe> FRewildPlanetShape::Ma
 
 namespace
 {
-	// The colony stands at +Z; TON 618 hangs 35 degrees up toward +X; the bay opens toward it.
+	// The colony stands at +Z; TON 618 hangs 25 degrees up toward +X; the bay opens toward it.
 	constexpr double HavenRadius = 5730000.0;
 	constexpr double ColonyRegion = 26000.0;   // m: inside this the colony's own ground takes over
 	constexpr double ColonyCore = 14000.0;

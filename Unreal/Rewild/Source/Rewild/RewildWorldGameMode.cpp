@@ -74,6 +74,10 @@ void ARewildWorldGameMode::StartPlay()
 			{TEXT("ship"), FVector2D(-1500.0, -300.0), 300.0, FVector2D(2600.0, 200.0), 0.0},
 			{TEXT("foot"), FVector2D(-250.0, 0.0), 1.8, FVector2D(1500.0, 0.0), 25.0},
 			{TEXT("ground"), FVector2D(-100.0, 0.0), 1.7, FVector2D(-97.0, 0.0), 0.0},
+			// TON 618 as the key art frames it (it hangs 25 degrees up, east): from the colony's ground, east and up
+			// about 16 degrees; and from the ship over the bay, up about 14 degrees
+			{TEXT("keyart"), FVector2D(-600.0, 0.0), 2.0, FVector2D(3000.0, 0.0), 1030.0},
+			{TEXT("skyship"), FVector2D(-1500.0, -300.0), 300.0, FVector2D(2600.0, 200.0), 1320.0},
 		};
 		FString Only;
 		if (FParse::Value(FCommandLine::Get(), TEXT("RewildStill="), Only))

@@ -92,6 +92,11 @@ public:
 		double Radius = 0.0;                        // bounding radius, metres
 		double Error = 0.0;                         // metres: how far this tile's surface is from its children's
 		double MinH = 0.0, MaxH = 0.0;
+		/** Metres from the tile's texture origin (on a 2,048 m grid) to its centre: the materials add the vertices'
+		 * own positions in the tile to it (custom primitive data 0-2), at full precision. The mesh's texture
+		 * coordinates are half floats, which at 600 m from the origin step every half metre and drew the 2 m grass
+		 * scan as bar codes (9 Nov). */
+		FVector3d TexOffset = FVector3d::ZeroVector;
 	};
 
 private:

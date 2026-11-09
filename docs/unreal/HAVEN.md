@@ -10,7 +10,7 @@ starts: the colony by the black hole TON 618 (GAME_DESIGN.md, Prologue; the firs
   that is what a world 0.9 Earth's size weighs, so the two agree.
 - **The light:** Haven goes round TON 618 turned always the same face to it, as the Moon is to Earth, so the hole
   hangs fixed in the sky and its accretion disk is the daylight: warm (#ffd8b0), from a wide source, so shadows are
-  soft. The colony stands where the hole sits about 35 degrees up. The far hemisphere is in night for ever, lit only
+  soft. The colony stands where the hole sits about 25 degrees up (35 at first; lowered so the hole and the horizon share a frame, as in the key art). The far hemisphere is in night for ever, lit only
   by the stars of the other galaxy.
 - **The air:** nitrogen and oxygen, breathable (the web version: `breathable`). A dusky sky, dark enough by day for
   the hole to show.
@@ -62,6 +62,31 @@ into the ground and eroded; real grass, trees and rocks; the shrine garden and t
 (the black hole and its disk); the water moving (waves, the falls, mist); weather; birds and fish; the colony's
 people.
 
+## TON 618 in the sky: reference and checklist (step 4, first; 9 Nov)
+
+References: Haven's key art (the hole above the domes); Interstellar's Gargantua as described in James, von
+Tunzelmann, Franklin and Thorne, "Gravitational lensing by spinning black holes in astrophysics, and in the movie
+Interstellar" (Classical and Quantum Gravity 32, 065001, 2015): the disk's far side lensed up over and under the
+shadow, the Doppler brightening toned down for the eye; the web version's ray tracer (web/components/expedition/
+BlackHole.tsx), ported. Offline renders of the same tracer settled the figures: at 13 Schwarzschild radii (the web
+version's distance) the disk fills the whole sky, far bigger than the key art; at **20 radii, 2.4 above the disk's
+plane**, with the disk from 1.6 to 7.7 radii (the story's fast spin lets it reach that far in), the proportions match
+the key art (shadow to disk about 1:4). The story's "a day here is ten years at home" is fiction at that distance.
+
+1. The shadow: a dark disc about 14 degrees across, its edge sharp; never flat black: Haven's thin air lies in front
+   of it (about 8-15, 15-25, 18-28).
+2. A thin bright ring hugs the shadow all the way round (the photon ring), under half a degree wide.
+3. The disk's near side crosses in front of the shadow as a band; its far side arches over the top and under the
+   bottom (the Interstellar halo); both visible, the halo about as bright as the band.
+4. The band runs about 45 degrees end to end, tilted about 12 degrees, rising to the right as in the key art.
+5. Colour: white-peach at the hot inner edge (about 255, 235, 215), peach through the body, dusky rose at the cool
+   rim; a cool blue-white glow round it from Haven's air. Never neon, never saturated orange.
+6. Flowing streaks along the orbits, inner ones faster; never blobs, never hair-fine noise.
+7. Brightness at Haven's exposure: the brightest parts near white without large clipped areas.
+8. Where the light comes from (25 degrees up, east), and in the sea's reflection and the sky's light.
+9. One side brighter than the other by about 1.5 times (Doppler, toned down).
+10. Cost under 1.5 ms at 1080p.
+
 ## Where it stands
 
 - 9 Nov: the plan and this checklist.
@@ -105,3 +130,12 @@ people.
   Cost: 10.4 ms a frame on average down from orbit (8-9 ms before), worst two seconds 12.6 ms: 1080p, RTX 3070.
   Fixed on the way: a lattice of the ground's triangles in the low light (the shadows' normal bias raised to 3 on
   planets) and the ground's finest bumps (now no finer than six point spacings).
+- 9 Nov, night: **TON 618 in the sky, first pass** (docs/images/haven-ton618-from-the-colony.jpg). The web version's
+  light-path tracer, ported to an additive material on a sky sphere 100,000 km out (M_TON618): the shadow, the
+  photon ring, the far side lensed over and under, streaks that turn with the gas (two copies crossfading, so the
+  shear never winds up), Doppler toned down, a faint blue glow of Haven's air round it. It hangs 25 degrees up (35
+  could not share a frame with the horizon). Graded: 1-4 and 6 yes; 5 partial (peach but paler than the key art, no
+  blue rim yet: the next round's palette is written but not built); 7 yes; 8 partial (the light comes from it; it is
+  kept out of the sky light, which it warmed to beige, so the sea does not reflect it yet); 9 yes; 10 not measured.
+  Fixed on the way: the ground's texture positions, read from the mesh as half floats, drew bar codes 600 m from
+  their origin; the materials now take each vertex's place in its tile plus the tile's offset at full precision.
