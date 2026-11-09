@@ -1,4 +1,5 @@
 #include "RewildFighter.h"
+#include "RewildPlanet.h"
 
 #include "Camera/CameraComponent.h"
 #include "Components/InstancedStaticMeshComponent.h"
@@ -151,6 +152,7 @@ void ARewildFighter::BeginPlay()
 {
 	Super::BeginPlay();
 	Start = GetActorTransform();
+	Planet = ARewildPlanet::Find(GetWorld());
 
 	// The eye socket gives the cockpit camera its place; it always looks along the hull.
 	if (Hull->DoesSocketExist(EyeSocket))
@@ -410,6 +412,10 @@ void ARewildFighter::Tick(float DeltaSeconds)
 	{
 		TickDemo(Dt);
 	}
+	if (bWorldAuto)
+	{
+		TickWorldAuto(Dt, DeltaSeconds);
+	}
 	Fly(Dt);
 	TickGuns(Dt);
 	TickMissiles(Dt);
@@ -428,7 +434,7 @@ void ARewildFighter::Fly(float Dt)
 {
 	// The stick wins while it is held; otherwise the mouse cursor steers. A small dead zone round the centre.
 	// The demo autopilot steers precisely, with no dead zone (one stopped it correcting errors under 1.4 degrees).
-	FVector2D Steer = bDemo ? Stick : (Stick.Size() > 0.1f ? Stick : AimCursor);
+	FVector2D Steer = (bDemo || bWorldAuto) ? Stick : (Stick.Size() > 0.1f ? Stick : AimCursor);
 	const float Magnitude = Steer.Size();
 	if (!bDemo)
 	{
@@ -451,16 +457,50 @@ void ARewildFighter::Fly(float Dt)
 		bOverheated = false;
 	}
 
+	// Over a world, travel speed grows with height (HAVEN.md: orbit to the ground in about two minutes): under 1.5 km
+	// the fighter flies as it does in the first fight, at 300 km two hundred times faster. (One per 3 km took three
+	// minutes from 400 km on the autopilot's glide: 9 Nov.)
+	double SpeedScale = 1.0;
+	ARewildPlanet* Below = Planet.Get();
+	if (Below)
+	{
+		Altitude = Below->AltitudeAt(GetActorLocation());
+		SpeedScale = FMath::Clamp(Altitude / 1500.0, 1.0, 600.0);
+	}
+
 	// Flight assist: velocity swings round to where the nose points, so hard turns drift for a moment.
-	const float TargetSpeed = (bBoosting ? BoostSpeed : CruiseSpeedMax * Throttle) * 100.f;
+	const double TargetSpeed = (bBoosting ? BoostSpeed : CruiseSpeedMax * Throttle) * 100.0 * SpeedScale;
 	Velocity += (GetActorForwardVector() * TargetSpeed - Velocity) * (1.f - FMath::Exp(-Assist * Dt));
 	AddActorWorldOffset(Velocity * Dt);
+
+	// The ground: skim it, or hit it too steeply and the fighter is lost.
+	if (Below)
+	{
+		Altitude = Below->AltitudeAt(GetActorLocation());
+		constexpr double Clearance = 3.0;  // m, the hull's half height
+		if (Altitude < Clearance)
+		{
+			const FVector Up = Below->UpAt(GetActorLocation());
+			const double Into = -FVector::DotProduct(Velocity, Up) / 100.0;  // m/s straight down
+			AddActorWorldOffset(Up * (Clearance - Altitude) * 100.0);
+			if (Into > 0.0)
+			{
+				Velocity += Up * Into * 100.0;
+			}
+			if (Into > 40.0 && !bDead)
+			{
+				UE_LOG(LogTemp, Display, TEXT("[rewild] hit the ground at %.0f m/s"), Into);
+				Health->ApplyDamage(1.0e6f, GetActorLocation());
+				return;
+			}
+		}
+	}
 
 	if (EngineGlow)
 	{
 		EngineGlow->SetScalarParameterValue(TEXT("Glow"), FMath::Lerp(GlowIdle, GlowFull, Throttle) * (bBoosting ? 1.6f : 1.f));
 	}
-	const float Fast = FMath::Clamp((GetSpeedMetresPerSecond() - CruiseSpeedMax) / (BoostSpeed - CruiseSpeedMax), 0.f, 1.f);
+	const float Fast = FMath::Clamp((GetSpeedMetresPerSecond() / float(SpeedScale) - CruiseSpeedMax) / (BoostSpeed - CruiseSpeedMax), 0.f, 1.f);
 	ChaseCamera->SetFieldOfView(70.f + 10.f * Fast);
 }
 
@@ -699,6 +739,102 @@ void ARewildFighter::HandleDeath()
 	ARewildExplosion::Spawn(GetWorld(), GetActorLocation(), Velocity, 1.6f);
 	Hull->SetVisibility(false, true);  // the hull and everything on it, cameras excepted
 	Hull->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+}
+
+void ARewildFighter::TickWorldAuto(float Dt, float RawDt)
+{
+	// Fly down from orbit toward the colony (it stands at +Z of the world below), gliding at the point 400 m over it;
+	// once under 800 m, level out at 300 m heading east over the bay toward TON 618. Shots on the way down (chase
+	// view, the fighter in frame) and frame times; quits 14 s after levelling out.
+	ARewildPlanet* World = Planet.Get();
+	if (!World)
+	{
+		return;
+	}
+	DemoTime += Dt;
+	ThrottleInput = Throttle < 0.7f ? 1.f : (Throttle > 0.75f ? -1.f : 0.f);
+	const FVector Here = GetActorLocation();
+	const FVector Colony = World->WorldAt(FVector3d(0, 0, 1), 0.0);
+	const FVector Up = World->UpAt(Here);
+	const double ToColony = FVector::VectorPlaneProject(Colony - Here, Up).Size() / 100.0;
+	if (!bWorldLow && Altitude < 800.0)
+	{
+		bWorldLow = true;
+		UE_LOG(LogTemp, Display, TEXT("[rewild fly] levelling out after %.1f s, %.0f m up, %.1f km from the colony"), DemoTime, Altitude, ToColony / 1000.0);
+	}
+	FVector Aim;
+	if (bWorldLow)
+	{
+		WorldLowTime += Dt;
+		const FVector East = FVector::VectorPlaneProject(FVector::ForwardVector, Up).GetSafeNormal();
+		Aim = Here + East * 500000.0 + Up * (300.0 - Altitude) * 100.0;
+	}
+	else
+	{
+		Aim = World->WorldAt(FVector3d(0, 0, 1), 400.0);
+	}
+	const FVector Local = GetActorTransform().InverseTransformVectorNoScale((Aim - Here).GetSafeNormal());
+	Stick = FVector2D(FMath::Clamp(FMath::Atan2(Local.Y, Local.X) * 4.f, -1.f, 1.f), FMath::Clamp(FMath::Atan2(Local.Z, Local.X) * 4.f, -1.f, 1.f));
+	// keep the wings level with the ground below
+	const float Bank = FMath::RadiansToDegrees(FMath::Asin(FMath::Clamp(FVector::DotProduct(GetActorRightVector(), Up), -1.0, 1.0)));
+	RollInput = FMath::Clamp(Bank / 20.f, -1.f, 1.f);
+
+	// frame times (the unclamped frame), by stage: above 100 km, 100 km to 3 km, under 3 km
+	WorldFrameSum += RawDt;
+	++WorldFrames;
+	WorldWorstFrame = FMath::Max(WorldWorstFrame, RawDt);
+	WorldLogIn -= Dt;
+	if (WorldLogIn <= 0.f)
+	{
+		WorldLogIn = 2.f;
+		UE_LOG(LogTemp, Display, TEXT("[rewild fly] %.1f s: %.2f km up, %.0f m/s, %.1f km to go, frames %.1f ms (worst %.1f)"),
+			DemoTime, Altitude / 1000.0, GetSpeedMetresPerSecond(), ToColony / 1000.0,
+			1000.0 * WorldFrameSum / FMath::Max(1, WorldFrames), 1000.f * WorldWorstFrame);
+		WorldFrameSum = 0.0;
+		WorldFrames = 0;
+		WorldWorstFrame = 0.f;
+	}
+
+	for (int32 I = DemoQueue.Num() - 1; I >= 0; --I)
+	{
+		if (DemoTime >= DemoQueue[I].Key)
+		{
+			Shoot(DemoQueue[I].Value);
+			DemoQueue.RemoveAt(I);
+		}
+	}
+	static const double Marks[] = {100000.0, 20000.0, 3000.0};
+	if (WorldShotStage < 3 && Altitude < Marks[WorldShotStage])
+	{
+		QueueShot(0.f, FString::Printf(TEXT("descending, %.0f km up"), Altitude / 1000.0));
+		++WorldShotStage;
+	}
+	if (WorldShotStage == 3 && WorldLowTime > 4.f)
+	{
+		QueueShot(0.f, TEXT("low over the grass"));
+		++WorldShotStage;
+	}
+	if (WorldShotStage == 4 && WorldLowTime > 8.f)
+	{
+		SetCockpitView(true);
+		QueueShot(0.5f, TEXT("cockpit, low"));
+		++WorldShotStage;
+	}
+	if (WorldShotStage == 5 && WorldLowTime > 14.f)
+	{
+		++WorldShotStage;
+		if (APlayerController* PC = Cast<APlayerController>(GetController()))
+		{
+			PC->ConsoleCommand(TEXT("quit"));
+		}
+	}
+}
+
+void ARewildFighter::SetStart(const FTransform& Where)
+{
+	Start = Where;
+	SetActorTransform(Where);
+	Velocity = Where.GetRotation().GetForwardVector() * CruiseSpeedMax * Throttle * 100.f;
 }
 
 void ARewildFighter::Respawn()

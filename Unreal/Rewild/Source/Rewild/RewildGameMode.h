@@ -35,7 +35,7 @@ public:
 	/** After the story mission is won: carry on here in free play. */
 	void ContinueAsFreePlay();
 
-private:
+protected:
 	ERewildMode Mode = ERewildMode::Menu;
 	int32 Checkpoint = 0;
 };

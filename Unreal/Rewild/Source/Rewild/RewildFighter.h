@@ -80,6 +80,12 @@ public:
 	int32 GetLastOrder() const { return LastOrder; }
 	float GetOrderShown() const { return OrderShown; }
 	int32 GetMaxFlares() const { return FlareCapacity; }
+	/** Where the fighter starts and comes back to (a world's game mode sets it), and puts it there now. */
+	void SetStart(const FTransform& Where);
+	/** Metres above the ground of the world below, or a huge number with no world. */
+	double GetAltitude() const { return Altitude; }
+	/** -RewildWorldFly: fly down from orbit to the colony by itself, photograph the way down, log it, and quit. */
+	void SetWorldAutopilot(bool bOn) { bWorldAuto = bOn; }
 
 protected:
 	virtual void BeginPlay() override;
@@ -222,11 +228,22 @@ private:
 	bool bDead = false;
 	float RespawnIn = 0.f;
 	FTransform Start;
+	TWeakObjectPtr<class ARewildPlanet> Planet;  // the world below, when there is one
+	double Altitude = 1.0e9;
 
 	TArray<FVector> DustOffsets;  // speck positions, wrapped inside a box round the camera
 
 	bool bDemo = false;
 	float DemoTime = 0.f;
+	bool bWorldAuto = false;
+	bool bWorldLow = false;
+	int32 WorldShotStage = 0;
+	float WorldLogIn = 0.f;
+	float WorldLowTime = 0.f;
+	double WorldFrameSum = 0.0;
+	int32 WorldFrames = 0;
+	float WorldWorstFrame = 0.f;
+	void TickWorldAuto(float DeltaSeconds, float RawDeltaSeconds);
 	int32 DemoShots = 0;
 	int32 DemoKills = 0;
 	bool bDemoTargetAlive = false;
