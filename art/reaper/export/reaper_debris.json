@@ -1,0 +1,366 @@
+{
+ "note": "Fragments of reaper.fbx; vertices in the Reaper's frame (metres, +X forward, +Z up), pivot at the Reaper's origin (the core's centre of volume). Centroid = centre of volume. The whole volume counts the core and both blades as separate solids (the blade roots are sunk into the core).",
+ "whole_volume_l": 30906.7,
+ "fragments": [
+  {
+   "name": "Debris_01",
+   "triangles": 5474,
+   "volume_l": 2580.9,
+   "centroid": [
+    -2.833,
+    -0.003,
+    0.077
+   ],
+   "bbox_min": [
+    -3.482,
+    -1.085,
+    -0.849
+   ],
+   "bbox_max": [
+    -2.158,
+    1.076,
+    1.262
+   ],
+   "non_manifold_edges": 0,
+   "slots": [
+    "M_Alloy_Dark",
+    "M_Alloy_Tint",
+    "M_Alloy_Bare",
+    "M_Seam_Hot",
+    "M_Engine_Hot"
+   ]
+  },
+  {
+   "name": "Debris_02",
+   "triangles": 15986,
+   "volume_l": 2712.8,
+   "centroid": [
+    1.935,
+    -0.688,
+    -0.203
+   ],
+   "bbox_min": [
+    0.126,
+    -1.789,
+    -1.69
+   ],
+   "bbox_max": [
+    3.987,
+    0.254,
+    1.083
+   ],
+   "non_manifold_edges": 6,
+   "slots": [
+    "M_Alloy_Dark",
+    "M_Alloy_Tint",
+    "M_Alloy_Bare",
+    "M_Seam_Hot",
+    "M_Dark_Interior"
+   ]
+  },
+  {
+   "name": "Debris_03",
+   "triangles": 3556,
+   "volume_l": 403.9,
+   "centroid": [
+    0.323,
+    -0.811,
+    -0.978
+   ],
+   "bbox_min": [
+    -0.301,
+    -1.808,
+    -1.706
+   ],
+   "bbox_max": [
+    0.892,
+    0.377,
+    0.344
+   ],
+   "non_manifold_edges": 0,
+   "slots": [
+    "M_Alloy_Dark",
+    "M_Alloy_Tint",
+    "M_Alloy_Bare",
+    "M_Seam_Hot",
+    "M_Dark_Interior"
+   ]
+  },
+  {
+   "name": "Debris_04",
+   "triangles": 12060,
+   "volume_l": 2608.8,
+   "centroid": [
+    -1.176,
+    -0.617,
+    0.149
+   ],
+   "bbox_min": [
+    -2.492,
+    -1.565,
+    -1.699
+   ],
+   "bbox_max": [
+    0.534,
+    0.385,
+    1.39
+   ],
+   "non_manifold_edges": 8,
+   "slots": [
+    "M_Alloy_Dark",
+    "M_Alloy_Tint",
+    "M_Alloy_Bare",
+    "M_Seam_Hot",
+    "M_Dark_Interior"
+   ]
+  },
+  {
+   "name": "Debris_05",
+   "triangles": 17202,
+   "volume_l": 3945.1,
+   "centroid": [
+    1.902,
+    0.578,
+    -0.029
+   ],
+   "bbox_min": [
+    -0.028,
+    -0.308,
+    -1.675
+   ],
+   "bbox_max": [
+    4.138,
+    1.808,
+    1.091
+   ],
+   "non_manifold_edges": 0,
+   "slots": [
+    "M_Alloy_Dark",
+    "M_Alloy_Tint",
+    "M_Alloy_Bare",
+    "M_Seam_Hot",
+    "M_Dark_Interior"
+   ]
+  },
+  {
+   "name": "Debris_06",
+   "triangles": 1716,
+   "volume_l": 159.9,
+   "centroid": [
+    0.176,
+    0.831,
+    -1.059
+   ],
+   "bbox_min": [
+    -0.294,
+    0.203,
+    -1.675
+   ],
+   "bbox_max": [
+    0.709,
+    1.561,
+    -0.07
+   ],
+   "non_manifold_edges": 0,
+   "slots": [
+    "M_Alloy_Dark",
+    "M_Alloy_Bare",
+    "M_Dark_Interior"
+   ]
+  },
+  {
+   "name": "Debris_07",
+   "triangles": 9884,
+   "volume_l": 2166.7,
+   "centroid": [
+    -1.168,
+    0.715,
+    0.298
+   ],
+   "bbox_min": [
+    -2.491,
+    -0.17,
+    -1.67
+   ],
+   "bbox_max": [
+    0.259,
+    1.565,
+    1.431
+   ],
+   "non_manifold_edges": 0,
+   "slots": [
+    "M_Alloy_Dark",
+    "M_Alloy_Tint",
+    "M_Alloy_Bare",
+    "M_Seam_Hot",
+    "M_Dark_Interior"
+   ]
+  },
+  {
+   "name": "Debris_08",
+   "triangles": 9042,
+   "volume_l": 6684.5,
+   "centroid": [
+    -0.239,
+    2.526,
+    -0.074
+   ],
+   "bbox_min": [
+    -2.992,
+    0.901,
+    -0.626
+   ],
+   "bbox_max": [
+    10.538,
+    5.611,
+    0.649
+   ],
+   "non_manifold_edges": 0,
+   "slots": [
+    "M_Alloy_Dark",
+    "M_Alloy_Tint",
+    "M_Alloy_Bare",
+    "M_Seam_Hot",
+    "M_Dark_Interior"
+   ]
+  },
+  {
+   "name": "Debris_09",
+   "triangles": 4890,
+   "volume_l": 1141.3,
+   "centroid": [
+    4.408,
+    4.518,
+    -0.308
+   ],
+   "bbox_min": [
+    2.333,
+    3.348,
+    -0.521
+   ],
+   "bbox_max": [
+    6.749,
+    5.611,
+    0.079
+   ],
+   "non_manifold_edges": 0,
+   "slots": [
+    "M_Alloy_Dark",
+    "M_Alloy_Tint",
+    "M_Alloy_Bare",
+    "M_Seam_Hot",
+    "M_Dark_Interior"
+   ]
+  },
+  {
+   "name": "Debris_10",
+   "triangles": 1964,
+   "volume_l": 301.6,
+   "centroid": [
+    7.595,
+    3.876,
+    -0.379
+   ],
+   "bbox_min": [
+    6.483,
+    3.028,
+    -0.492
+   ],
+   "bbox_max": [
+    9.573,
+    4.718,
+    -0.18
+   ],
+   "non_manifold_edges": 0,
+   "slots": [
+    "M_Alloy_Dark",
+    "M_Alloy_Tint",
+    "M_Alloy_Bare",
+    "M_Seam_Hot"
+   ]
+  },
+  {
+   "name": "Debris_11",
+   "triangles": 9264,
+   "volume_l": 6765.1,
+   "centroid": [
+    -0.269,
+    -2.537,
+    -0.069
+   ],
+   "bbox_min": [
+    -2.979,
+    -5.606,
+    -0.626
+   ],
+   "bbox_max": [
+    10.538,
+    -0.897,
+    0.661
+   ],
+   "non_manifold_edges": 0,
+   "slots": [
+    "M_Alloy_Dark",
+    "M_Alloy_Tint",
+    "M_Alloy_Bare",
+    "M_Seam_Hot",
+    "M_Dark_Interior"
+   ]
+  },
+  {
+   "name": "Debris_12",
+   "triangles": 4902,
+   "volume_l": 1132.3,
+   "centroid": [
+    4.416,
+    -4.529,
+    -0.31
+   ],
+   "bbox_min": [
+    2.354,
+    -5.606,
+    -0.533
+   ],
+   "bbox_max": [
+    6.733,
+    -3.336,
+    0.051
+   ],
+   "non_manifold_edges": 0,
+   "slots": [
+    "M_Alloy_Dark",
+    "M_Alloy_Tint",
+    "M_Alloy_Bare",
+    "M_Seam_Hot",
+    "M_Dark_Interior"
+   ]
+  },
+  {
+   "name": "Debris_13",
+   "triangles": 1920,
+   "volume_l": 302.0,
+   "centroid": [
+    7.591,
+    -3.885,
+    -0.381
+   ],
+   "bbox_min": [
+    6.461,
+    -4.722,
+    -0.498
+   ],
+   "bbox_max": [
+    9.572,
+    -3.028,
+    -0.194
+   ],
+   "non_manifold_edges": 0,
+   "slots": [
+    "M_Alloy_Dark",
+    "M_Alloy_Tint",
+    "M_Alloy_Bare",
+    "M_Seam_Hot"
+   ]
+  }
+ ]
+}
