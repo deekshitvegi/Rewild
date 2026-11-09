@@ -609,6 +609,19 @@ vec3 vFlowDir(float speed) { return vFlow / max(speed, 1e-3); }
 #else
 vec3 vFlowDir(float speed) { return vec3(0.0); }
 #endif
+#ifdef TERRAIN_EARTH
+// The sun's glint off the sea where its waves are finer than a pixel (from on high), as photographed from orbit:
+// not a point but a broad soft patch, the waves tilting a little of it towards the eye over ten degrees or more
+// (Cox and Munk's wave slopes, a Beckmann spread of 0.06), brightest seen at a slant (Fresnel). Times the sun.
+float seaGlint(vec3 up, vec3 toEye) {
+    vec3 halfway = normalize(toEye + uSunDir);
+    float nh = max(dot(up, halfway), 1e-3);
+    float nh2 = nh * nh;
+    float spread = exp(-(1.0 - nh2) / (nh2 * 0.06)) / (3.14159 * 0.06 * nh2 * nh2);
+    float fresnel = 0.02 + 0.98 * pow(1.0 - max(dot(toEye, halfway), 0.0), 5.0);
+    return min(fresnel * spread * 0.25 / max(dot(up, toEye), 0.12), 0.22) * 1.45 * 3.14159 * smoothstep(-0.02, 0.1, dot(up, uSunDir));
+}
+#endif
 vec3 waterColor(vec3 bottom, vec2 water, vec3 up, vec3 pos, float footprint) {
     vec3 toEye = uCamLocal - pos;
     float dist = length(toEye);
@@ -661,7 +674,13 @@ vec3 waterColor(vec3 bottom, vec2 water, vec3 up, vec3 pos, float footprint) {
     #endif
     float sunUp = smoothstep(-0.02, 0.08, dot(up, uSunDir));
     float spec = pow(max(dot(R, uSunDir), 0.0), 420.0) * 6.0 * sunUp;
-    vec3 color = mix(lit, sky, fresnel) + (uSunColor * spec + uSunColor * waterGlint(N, V, up, pos, footprint, speed > 0.03 ? vFlowDir(speed) : vec3(0.0), speed) * sunUp) * gSunShade;
+    vec3 sunOff = uSunColor * spec + uSunColor * waterGlint(N, V, up, pos, footprint, speed > 0.03 ? vFlowDir(speed) : vec3(0.0), speed) * sunUp;
+    #ifdef TERRAIN_EARTH
+    // Further off than the ripples can be drawn, the broad glint instead.
+    float rough = smoothstep(0.8, 6.0, footprint);
+    sunOff = mix(sunOff, uSunColor * seaGlint(up, V), rough);
+    #endif
+    vec3 color = mix(lit, sky, fresnel) + sunOff * gSunShade;
     #if defined(TERRAIN_EARTH) || defined(TERRAIN_STREAMS)
     // Where a river runs fast over the shallows by its banks, white water in streaks along it.
     #ifdef TERRAIN_WATER_DETAIL
@@ -871,13 +890,7 @@ void main() {
     // The sun's glint off the sea as photographed from orbit: not a point but a broad soft patch, the sea's
     // waves tilting a little of it towards the eye over ten degrees or more (Cox and Munk's wave slopes,
     // a Beckmann spread of 0.045), brightest seen at a slant (Fresnel). Not under cloud.
-    vec3 Hglint = normalize(toEye + uSunDir);
-    float nh = max(dot(vDir, Hglint), 1e-3);
-    float nh2 = nh * nh;
-    float spread = exp(-(1.0 - nh2) / (nh2 * 0.06)) / (3.14159 * 0.06 * nh2 * nh2);
-    float fresnelGlint = 0.02 + 0.98 * pow(1.0 - max(dot(toEye, Hglint), 0.0), 5.0);
-    float glint = min(fresnelGlint * spread * 0.25 / max(dot(vDir, toEye), 0.12), 0.8) * 1.45 * 3.14159;
-    color += uSunColor * glint * water * far * smoothstep(-0.02, 0.1, dot(vDir, uSunDir)) * gSunShade;
+    color += uSunColor * seaGlint(vDir, toEye) * water * far * gSunShade;
     #else
     float glint = pow(max(dot(vDir, normalize(toEye + uSunDir)), 0.0), 160.0);
     color += uSunColor * glint * water * far * 2.2 * surfaceDay(vDir);

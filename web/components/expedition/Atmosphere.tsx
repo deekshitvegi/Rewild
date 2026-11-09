@@ -272,20 +272,26 @@ void main() {
     float phaseR = spacePhaseR(c);
     float phaseM = spacePhaseM(c);
     vec3 sum = vec3(0.0);
-    for (int side = 0; side < 2; side++) {
-        float span = side == 0 ? t0 - tc : t1 - tc;
-        for (int k = 0; k < SPACE_STEPS; k++) {
-            float u = (float(k) + 0.5) / float(SPACE_STEPS);
-            float t = tc + span * u * u;
-            float dt = abs(span) * 2.0 * u / float(SPACE_STEPS);
-            vec3 p = o + r * t;
-            float rp = length(p);
-            vec3 up = p / rp;
-            float h = max(rp - uRadius, 0.0);
-            vec3 toEye = exp(-spaceDepth(rp, -dot(up, r)));
-            vec3 sun = spaceSunlight(rp, up);
-            sum += (uSpaceBetaR * (exp(-h / uSpaceH) * phaseR) + vec3(uSpaceBetaM * exp(-h / uSpaceHM) * phaseM)) * sun * toEye * dt;
-        }
+    // Segment by segment from the near end: each adds the light scattered towards the eye in it, as the share of
+    // what it takes out of the view (scattering over extinction, the drop in what gets through across it), so a
+    // path too thick to see through saturates to the colour of the light, not to whichever samples were taken.
+    float tA = t0;
+    vec3 seenA = exp(-spaceDepth(length(o + r * t0), -dot(normalize(o + r * t0), r)));
+    for (int k = 1; k <= 2 * SPACE_STEPS; k++) {
+        float u = float(k) / float(SPACE_STEPS);
+        float tB = u <= 1.0 ? tc - (tc - t0) * (1.0 - u) * (1.0 - u) : tc + (t1 - tc) * (u - 1.0) * (u - 1.0);
+        vec3 pB = o + r * tB;
+        float rB = length(pB);
+        vec3 seenB = exp(-spaceDepth(rB, -dot(pB / rB, r)));
+        vec3 pM = o + r * (0.5 * (tA + tB));
+        float rM = length(pM);
+        float h = max(rM - uRadius, 0.0);
+        vec3 scatterR = uSpaceBetaR * exp(-h / uSpaceH);
+        float scatterM = uSpaceBetaM * exp(-h / uSpaceHM);
+        vec3 share = (scatterR * phaseR + vec3(scatterM * phaseM)) / max(scatterR + vec3(scatterM * 1.1), vec3(1e-9));
+        sum += share * spaceSunlight(rM, pM / rM) * max(seenA - seenB, vec3(0.0));
+        tA = tB;
+        seenA = seenB;
     }
     // What the air lets through from behind: the ground, or space and the stars.
     vec3 tau;
