@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "RewildFlight.h"
 #include "RewildReaper.generated.h"
 
 class UMaterialInstanceDynamic;
@@ -52,6 +53,10 @@ public:
 	/** Slugs fired by all Reapers so far (the demo's summary). */
 	static int32 SlugsFired;
 
+	/** Whom it hunts: the player, or one of the crew's wingmen (the pack decides). Falls back to the player. */
+	void SetPrey(AActor* InPrey) { Prey = InPrey; }
+	AActor* GetPrey() const;
+
 	/** The pack lets one Reaper at a time lock on and fire its missile. */
 	void SetMissileAllowed(bool bAllowed) { bMissileAllowed = bAllowed; }
 
@@ -83,7 +88,8 @@ private:
 	enum class EManoeuvre : uint8 { None, Break, Extend, Jink };
 
 	FVector Velocity = FVector::ZeroVector;
-	float PitchIn = 0.f, YawIn = 0.f, RollIn = 0.f;  // smoothed stick, -1..1
+	FRewildStick Stick;
+	TWeakObjectPtr<AActor> Prey;
 	float Clock = 0.f;
 	bool bBoosting = false;
 
@@ -113,7 +119,7 @@ private:
 	float HitFlash = 0.f;
 
 	void Think(float Dt, FVector& OutDir, float& OutSpeed);
-	void Steer(const FVector& Dir, float Speed, float Dt);
+	void Steer(const FVector& Dir, float Speed, float Dt);  // Speed in m/s
 	void TickGuns(float Dt, const AActor* Player);
 	void TickMissile(float Dt, AActor* Player);
 	void Defend(float Dt, const AActor* Player);
@@ -141,6 +147,10 @@ public:
 	/** Reapers alive now. */
 	int32 NumAlive() const;
 	bool HasStarted() const { return bStarted; }
+	/** Free play: packs come by themselves, one after another. The story mission turns this off and calls LaunchPack. */
+	void SetAuto(bool bInAuto) { bAuto = bInAuto; }
+	/** A pack of Size Reapers, 3.5 km ahead of the player, coming in; split, half come from each side. */
+	void LaunchPack(int32 Size, bool bSplit = false);
 
 protected:
 	virtual void BeginPlay() override;
@@ -158,8 +168,9 @@ private:
 	float ReflankIn = 12.f;
 	int32 PacksSent = 0;
 	bool bStarted = false;
+	bool bAuto = true;
 	bool bWasMissileFlying = false;
 
-	void SpawnPack(int32 Size);
+	void SpawnPack(int32 Size, bool bSplit);
 	void Coordinate();
 };

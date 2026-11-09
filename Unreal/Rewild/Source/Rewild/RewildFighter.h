@@ -31,8 +31,10 @@ class UStaticMeshComponent;
  * beside the ship, four at a time, to pull a Harrow missile away; twelve, one back every 6 s.
  *
  * Keyboard and mouse: mouse steers, left button fires the guns, right button a missile, F flares, W/S throttle,
- * A/D roll, Shift boost, C chase or cockpit camera, Esc quit. Gamepad: left stick steers, right trigger guns, left
- * trigger missile, B flares, right stick throttle (up/down) and roll (left/right), A boost, right stick press camera.
+ * A/D roll, Shift boost, C chase or cockpit camera, 1-4 orders to the wing (attack my target, cover me, form up,
+ * weapons free), Esc pause. Gamepad: left stick steers, right trigger guns, left trigger missile, B flares, right
+ * stick throttle (up/down) and roll (left/right), A boost, right stick press camera, d-pad orders (up attack, right
+ * cover, down form up, left weapons free), Start pause.
  *
  * -RewildDemo on the command line flies an autopilot run against the Harrow's Reapers (guns, missiles, flares),
  * takes screenshots and quits.
@@ -70,6 +72,13 @@ public:
 	int32 GetMissiles() const { return Missiles; }
 	int32 GetMaxMissiles() const { return MissileCapacity; }
 	int32 GetFlares() const { return Flares; }
+	/** Story mode: being shot down ends the attempt (the mission shows the panel) instead of coming back. */
+	void SetRespawns(bool bOn) { bRespawns = bOn; }
+	/** Reads the player's settings (mouse sensitivity). */
+	void ApplySettings();
+	/** The last order given (0 attack, 1 cover, 2 form up, 3 weapons free) and how long the HUD still shows it. */
+	int32 GetLastOrder() const { return LastOrder; }
+	float GetOrderShown() const { return OrderShown; }
 	int32 GetMaxFlares() const { return FlareCapacity; }
 
 protected:
@@ -127,6 +136,7 @@ private:
 	UPROPERTY() TObjectPtr<UInputAction> FireAction;
 	UPROPERTY() TObjectPtr<UInputAction> MissileAction;
 	UPROPERTY() TObjectPtr<UInputAction> FlareAction;
+	UPROPERTY() TArray<TObjectPtr<UInputAction>> OrderActions;  // 1 attack my target, 2 cover me, 3 form up, 4 weapons free
 	UPROPERTY() TObjectPtr<UInputAction> CameraAction;
 	UPROPERTY() TObjectPtr<UInputAction> QuitAction;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> EngineGlow;
@@ -146,6 +156,11 @@ private:
 	void OnFireReleased(const FInputActionValue& Value);
 	void OnMissile(const FInputActionValue& Value);
 	void OnFlares(const FInputActionValue& Value);
+	void OnOrderAttack(const FInputActionValue& Value);
+	void OnOrderCover(const FInputActionValue& Value);
+	void OnOrderFormUp(const FInputActionValue& Value);
+	void OnOrderFree(const FInputActionValue& Value);
+	void GiveOrder(int32 Order);
 	void OnCamera(const FInputActionValue& Value);
 	void OnQuit(const FInputActionValue& Value);
 
@@ -193,6 +208,10 @@ private:
 	int32 Flares = 16;
 	float FlareRecharge = 0.f;
 	float FlareCooldown = 0.f;
+	int32 LastOrder = 3;
+	bool bRespawns = true;
+	float DemoEndedAt = -1.f;
+	float OrderShown = 0.f;
 	FVector LeadPoint = FVector::ZeroVector;
 	bool bHasLead = false;
 	float HitMarker = 0.f;

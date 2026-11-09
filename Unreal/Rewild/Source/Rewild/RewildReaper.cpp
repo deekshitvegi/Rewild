@@ -12,6 +12,8 @@
 #include "RewildBolts.h"
 #include "RewildExplosion.h"
 #include "RewildFighter.h"
+#include "RewildFlight.h"
+#include "RewildWingman.h"
 #include "RewildHealthComponent.h"
 #include "RewildMissiles.h"
 #include "UObject/ConstructorHelpers.h"
@@ -32,33 +34,8 @@ namespace
 	constexpr float MissileRangeMax = 2400.f * M;
 	constexpr float MissileReloadTime = 18.f;
 
-	/** Time for a bolt (speed Speed, plus the shooter's velocity) to meet a target; false if it never can. */
-	bool SolveLead(const FVector& Offset, const FVector& RelativeVelocity, float Speed, float& OutTime)
-	{
-		const float A = RelativeVelocity.SizeSquared() - Speed * Speed;
-		const float B = 2.f * FVector::DotProduct(Offset, RelativeVelocity);
-		const float C = Offset.SizeSquared();
-		if (FMath::Abs(A) < 1e-3f)
-		{
-			OutTime = B < 0.f ? -C / B : -1.f;
-			return OutTime > 0.f;
-		}
-		const float Disc = B * B - 4.f * A * C;
-		if (Disc < 0.f)
-		{
-			return false;
-		}
-		const float Root = FMath::Sqrt(Disc);
-		const float T1 = (-B - Root) / (2.f * A);
-		const float T2 = (-B + Root) / (2.f * A);
-		OutTime = (T1 > 0.f && (T1 < T2 || T2 <= 0.f)) ? T1 : T2;
-		return OutTime > 0.f;
-	}
-
-	float AngleDeg(const FVector& A, const FVector& B)
-	{
-		return FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(FVector::DotProduct(A.GetSafeNormal(), B.GetSafeNormal()), -1.f, 1.f)));
-	}
+	using RewildFlight::AngleDeg;
+	using RewildFlight::SolveLead;
 
 	bool PlayerAlive(const APawn* P)
 	{
@@ -189,10 +166,10 @@ void ARewildReaper::Tick(float DeltaSeconds)
 	TacticTime += Dt;
 	HitFlash = FMath::Max(0.f, HitFlash - Dt * 3.f);
 
-	APawn* Player = UGameplayStatics::GetPlayerPawn(this, 0);
+	AActor* Player = GetPrey();  // the player, or the wingman it was set on
 	if (Player)
 	{
-		// What it believes the player is doing lags the truth by about 0.25 s, so only hard jinks throw its aim.
+		// What it believes its prey is doing lags the truth by about 0.25 s, so only hard jinks throw its aim.
 		PlayerVelocitySeen = FMath::Lerp(PlayerVelocitySeen, Player->GetVelocity(), 1.f - FMath::Exp(-4.f * Dt));
 	}
 	Defend(Dt, Player);
@@ -200,7 +177,7 @@ void ARewildReaper::Tick(float DeltaSeconds)
 	float Speed;
 	Think(Dt, Dir, Speed);
 	Steer(Dir, Speed, Dt);
-	if (PlayerAlive(Player))
+	if (RewildFlight::IsAlive(Player))
 	{
 		TickGuns(Dt, Player);
 		TickMissile(Dt, Player);
@@ -246,8 +223,8 @@ void ARewildReaper::Think(float Dt, FVector& OutDir, float& OutSpeed)
 	OutSpeed = CruiseSpeed;
 	bBoosting = false;
 
-	const APawn* Player = UGameplayStatics::GetPlayerPawn(this, 0);
-	if (!PlayerAlive(Player))
+	const AActor* Player = GetPrey();
+	if (!RewildFlight::IsAlive(Player))
 	{
 		OutDir = (Fwd + GetActorRightVector() * 0.15f).GetSafeNormal();  // nobody to fight: a slow wide circle
 		return;
@@ -385,45 +362,20 @@ void ARewildReaper::Think(float Dt, FVector& OutDir, float& OutSpeed)
 	OutDir = OutDir.GetSafeNormal(UE_SMALL_NUMBER, Fwd);
 }
 
+AActor* ARewildReaper::GetPrey() const
+{
+	AActor* P = Prey.Get();
+	return RewildFlight::IsAlive(P) ? P : UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
+}
+
 void ARewildReaper::Steer(const FVector& Dir, float Speed, float Dt)
 {
-	const FVector Local = GetActorTransform().InverseTransformVectorNoScale(Dir);
-	const float Off = AngleDeg(FVector::ForwardVector, Local);
-	const float RollErr = FMath::Atan2(Local.Y, Local.Z);  // where the goal sits round the nose: 0 straight overhead
-	float WantPitch = 0.f, WantYaw = 0.f, WantRoll = 0.f;
-	if (Off > 10.f)
-	{
-		if (FMath::Abs(RollErr) > FMath::DegreesToRadians(130.f) && Off < 35.f)
-		{
-			// a little below: push the nose down rather than roll over
-			WantPitch = FMath::Clamp(FMath::Atan2(Local.Z, Local.X) * 4.f, -0.6f, 0.f);
-			WantYaw = FMath::Clamp(FMath::Atan2(Local.Y, Local.X) * 4.f, -1.f, 1.f);
-		}
-		else
-		{
-			// Bank so the goal sits above the canopy, then pull: the way fighters turn.
-			WantRoll = FMath::Clamp(RollErr * 2.5f, -1.f, 1.f);
-			const float Aligned = FMath::Clamp(1.f - FMath::Abs(RollErr) / FMath::DegreesToRadians(70.f), 0.f, 1.f);
-			WantPitch = FMath::Clamp(Off / 30.f, 0.f, 1.f) * Aligned;
-			WantYaw = FMath::Clamp(FMath::Atan2(Local.Y, Local.X) * 2.f, -1.f, 1.f) * 0.5f;
-		}
-	}
-	else
-	{
-		// fine aim: small pitch and yaw, no roll
-		WantPitch = FMath::Clamp(FMath::Atan2(Local.Z, Local.X) * 6.f, -1.f, 1.f);
-		WantYaw = FMath::Clamp(FMath::Atan2(Local.Y, Local.X) * 6.f, -1.f, 1.f);
-	}
-	// The stick moves at a hand's pace, never instantly: turns start and end smoothly.
-	const float Step = 6.f * Dt;
-	PitchIn += FMath::Clamp(WantPitch - PitchIn, -Step, Step);
-	YawIn += FMath::Clamp(WantYaw - YawIn, -Step, Step);
-	RollIn += FMath::Clamp(WantRoll - RollIn, -Step, Step);
-	SetActorRotation(GetActorQuat() * FQuat(FRotator(PitchIn * PitchRate * Dt, YawIn * YawRate * Dt, RollIn * RollRate * Dt)));
-
-	// Flight assist, as the player's: velocity swings round to the nose.
-	Velocity += (GetActorForwardVector() * Speed * M - Velocity) * (1.f - FMath::Exp(-Assist * Dt));
-	AddActorWorldOffset(Velocity * Dt);
+	FRewildFlightFigures Figures;
+	Figures.PitchRate = PitchRate;
+	Figures.YawRate = YawRate;
+	Figures.RollRate = RollRate;
+	Figures.Assist = Assist;
+	RewildFlight::Steer(this, Stick, Velocity, Dir, Speed * M, Dt, Figures);
 }
 
 void ARewildReaper::TickGuns(float Dt, const AActor* Player)
@@ -618,13 +570,9 @@ void ARewildHarrowWave::Tick(float DeltaSeconds)
 	if (Pack.Num() == 0)
 	{
 		NextPackIn -= Dt;
-		if (NextPackIn <= 0.f && PlayerAlive(UGameplayStatics::GetPlayerPawn(this, 0)))
+		if (bAuto && NextPackIn <= 0.f && PlayerAlive(UGameplayStatics::GetPlayerPawn(this, 0)))
 		{
-			SpawnPack(FMath::Min(3 + PacksSent, 5));
-			++PacksSent;
-			bStarted = true;
-			NextPackIn = PackGap;
-			ThinkIn = 0.f;
+			LaunchPack(FMath::Min(3 + PacksSent, 5));
 		}
 		return;
 	}
@@ -636,34 +584,64 @@ void ARewildHarrowWave::Tick(float DeltaSeconds)
 	}
 }
 
-void ARewildHarrowWave::SpawnPack(int32 Size)
+void ARewildHarrowWave::LaunchPack(int32 Size, bool bSplit)
+{
+	if (!PlayerAlive(UGameplayStatics::GetPlayerPawn(this, 0)))
+	{
+		return;
+	}
+	SpawnPack(Size, bSplit);
+	++PacksSent;
+	bStarted = true;
+	NextPackIn = PackGap;
+	ThinkIn = 0.f;
+}
+
+void ARewildHarrowWave::SpawnPack(int32 Size, bool bSplit)
 {
 	const APawn* Player = UGameplayStatics::GetPlayerPawn(this, 0);
 	const FVector P = Player->GetActorLocation();
 	const FVector F = Player->GetActorForwardVector();
 	const FVector R = Player->GetActorRightVector();
 	const FVector U = Player->GetActorUpVector();
-	// From ahead, a little off to one side, 3.5 km out, in a loose vee.
-	const FVector Centre = P + F * 3500.f * M + R * FMath::FRandRange(-900.f, 900.f) * M + U * FMath::FRandRange(-300.f, 300.f) * M;
-	const FRotator Facing = (P - Centre).Rotation();
-	const FVector VF = Facing.Vector();
-	const FVector VR = FRotationMatrix(Facing).GetUnitAxis(EAxis::Y);
 	FActorSpawnParameters Spawn;
 	Spawn.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 	for (int32 I = 0; I < Size; ++I)
 	{
-		const int32 Rank = (I + 1) / 2;
-		const float SideSign = I == 0 ? 0.f : (I % 2 == 1 ? -1.f : 1.f);
+		// From ahead, a little off to one side, 3.5 km out, in a loose vee; split, half from 50 deg left and half
+		// from 50 deg right, 3 km out.
+		const int32 Group = bSplit ? I % 2 : 0;
+		const int32 InGroup = bSplit ? I / 2 : I;
+		FVector Centre;
+		if (bSplit)
+		{
+			const float Bearing = FMath::DegreesToRadians(Group == 0 ? -50.f : 50.f);
+			Centre = P + (F * FMath::Cos(Bearing) + R * FMath::Sin(Bearing)) * 3000.f * M + U * (Group == 0 ? 200.f : -200.f) * M;
+		}
+		else
+		{
+			static FVector Shared;
+			if (I == 0)
+			{
+				Shared = P + F * 3500.f * M + R * FMath::FRandRange(-900.f, 900.f) * M + U * FMath::FRandRange(-300.f, 300.f) * M;
+			}
+			Centre = Shared;
+		}
+		const FRotator Facing = (P - Centre).Rotation();
+		const FVector VF = Facing.Vector();
+		const FVector VR = FRotationMatrix(Facing).GetUnitAxis(EAxis::Y);
+		const int32 Rank = (InGroup + 1) / 2;
+		const float SideSign = InGroup == 0 ? 0.f : (InGroup % 2 == 1 ? -1.f : 1.f);
 		const FVector Where = Centre + VR * SideSign * 120.f * M * Rank - VF * 80.f * M * Rank;
 		if (ARewildReaper* Reaper = GetWorld()->SpawnActor<ARewildReaper>(Where, Facing, Spawn))
 		{
 			Reaper->StartAt(Where, Facing);
 			// The leader comes straight in; the rest swing wide to the sides.
-			Reaper->SetTactic(I == 0 ? ERewildTactic::Engage : ERewildTactic::Flank, I == 0 ? 1.f : SideSign);
+			Reaper->SetTactic(InGroup == 0 ? ERewildTactic::Engage : ERewildTactic::Flank, InGroup == 0 ? 1.f : SideSign);
 			Pack.Add(Reaper);
 		}
 	}
-	UE_LOG(LogTemp, Display, TEXT("[rewild] Harrow pack of %d, 3.5 km ahead"), Size);
+	UE_LOG(LogTemp, Display, TEXT("[rewild] Harrow pack of %d%s"), Size, bSplit ? TEXT(", split to both sides") : TEXT(", 3.5 km ahead"));
 }
 
 void ARewildHarrowWave::Coordinate()
@@ -697,10 +675,30 @@ void ARewildHarrowWave::Coordinate()
 		Bait = nullptr;  // alone, it just fights
 	}
 
+	// Whom each hunts: two in three go for the player, every third for one of the crew's wingmen still flying.
+	TArray<AActor*> Wingmen;
+	for (TActorIterator<ARewildWingman> It(GetWorld()); It; ++It)
+	{
+		if (It->IsAlive())
+		{
+			Wingmen.Add(*It);
+		}
+	}
+	for (int32 I = 0; I < Pack.Num(); ++I)
+	{
+		AActor* Want = (Wingmen.Num() > 0 && I % 3 == 2) ? Wingmen[(I / 3) % Wingmen.Num()] : const_cast<ARewildFighter*>(Fighter);
+		Pack[I]->SetPrey(Want);
+	}
+
 	float NextSide = 1.f;
 	for (const TWeakObjectPtr<ARewildReaper>& W : Pack)
 	{
 		ARewildReaper* R = W.Get();
+		if (R->GetPrey() != Fighter)
+		{
+			R->SetTactic(ERewildTactic::Engage);  // on a wingman: it just fights it
+			continue;
+		}
 		if (R == Bait)
 		{
 			R->SetTactic(ERewildTactic::Bait);

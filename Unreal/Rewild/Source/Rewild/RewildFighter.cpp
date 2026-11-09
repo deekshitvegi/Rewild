@@ -22,6 +22,11 @@
 #include "RewildHealthComponent.h"
 #include "RewildMissiles.h"
 #include "RewildReaper.h"
+#include "RewildRadio.h"
+#include "RewildWingman.h"
+#include "RewildHUD.h"
+#include "RewildMission.h"
+#include "RewildSave.h"
 #include "UObject/ConstructorHelpers.h"
 
 namespace
@@ -183,6 +188,7 @@ void ARewildFighter::BeginPlay()
 	}
 	Missiles = MissileCapacity;
 	Flares = FlareCapacity;
+	ApplySettings();
 
 	BuildInput();
 	if (const APlayerController* PC = Cast<APlayerController>(GetController()))
@@ -249,12 +255,24 @@ void ARewildFighter::BuildInput()
 	Mapping->MapKey(FlareAction, EKeys::F);
 	Mapping->MapKey(FlareAction, EKeys::Gamepad_FaceButton_Right);
 
+	const FKey OrderKeys[4][2] = {{EKeys::One, EKeys::Gamepad_DPad_Up}, {EKeys::Two, EKeys::Gamepad_DPad_Right},
+		{EKeys::Three, EKeys::Gamepad_DPad_Down}, {EKeys::Four, EKeys::Gamepad_DPad_Left}};
+	const TCHAR* OrderNames[4] = {TEXT("OrderAttack"), TEXT("OrderCover"), TEXT("OrderFormUp"), TEXT("OrderFree")};
+	for (int32 I = 0; I < 4; ++I)
+	{
+		UInputAction* A = Action(OrderNames[I], EInputActionValueType::Boolean);
+		Mapping->MapKey(A, OrderKeys[I][0]);
+		Mapping->MapKey(A, OrderKeys[I][1]);
+		OrderActions.Add(A);
+	}
+
 	CameraAction = Action(TEXT("Camera"), EInputActionValueType::Boolean);
 	Mapping->MapKey(CameraAction, EKeys::C);
 	Mapping->MapKey(CameraAction, EKeys::Gamepad_RightThumbstick);
 
-	QuitAction = Action(TEXT("Quit"), EInputActionValueType::Boolean);  // until there is a pause menu
+	QuitAction = Action(TEXT("Pause"), EInputActionValueType::Boolean);
 	Mapping->MapKey(QuitAction, EKeys::Escape);
+	Mapping->MapKey(QuitAction, EKeys::Gamepad_Special_Right);
 }
 
 void ARewildFighter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -279,6 +297,10 @@ void ARewildFighter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 	Input->BindAction(FireAction, ETriggerEvent::Completed, this, &ARewildFighter::OnFireReleased);
 	Input->BindAction(MissileAction, ETriggerEvent::Started, this, &ARewildFighter::OnMissile);
 	Input->BindAction(FlareAction, ETriggerEvent::Started, this, &ARewildFighter::OnFlares);
+	Input->BindAction(OrderActions[0], ETriggerEvent::Started, this, &ARewildFighter::OnOrderAttack);
+	Input->BindAction(OrderActions[1], ETriggerEvent::Started, this, &ARewildFighter::OnOrderCover);
+	Input->BindAction(OrderActions[2], ETriggerEvent::Started, this, &ARewildFighter::OnOrderFormUp);
+	Input->BindAction(OrderActions[3], ETriggerEvent::Started, this, &ARewildFighter::OnOrderFree);
 	Input->BindAction(CameraAction, ETriggerEvent::Started, this, &ARewildFighter::OnCamera);
 	Input->BindAction(QuitAction, ETriggerEvent::Started, this, &ARewildFighter::OnQuit);
 }
@@ -305,13 +327,57 @@ void ARewildFighter::OnFireReleased(const FInputActionValue&) { bFireHeld = fals
 void ARewildFighter::OnCamera(const FInputActionValue&) { SetCockpitView(!bCockpitView); }
 void ARewildFighter::OnMissile(const FInputActionValue&) { FireMissile(); }
 void ARewildFighter::OnFlares(const FInputActionValue&) { DropFlares(); }
+void ARewildFighter::OnOrderAttack(const FInputActionValue&) { GiveOrder(0); }
+void ARewildFighter::OnOrderCover(const FInputActionValue&) { GiveOrder(1); }
+void ARewildFighter::OnOrderFormUp(const FInputActionValue&) { GiveOrder(2); }
+void ARewildFighter::OnOrderFree(const FInputActionValue&) { GiveOrder(3); }
+
+void ARewildFighter::GiveOrder(int32 Order)
+{
+	if (bDead)
+	{
+		return;
+	}
+	static const ERewildOrder Orders[4] = {ERewildOrder::Attack, ERewildOrder::Cover, ERewildOrder::FormUp, ERewildOrder::Free};
+	if (Order == 0 && !Target.IsValid())
+	{
+		return;  // nothing to attack
+	}
+	TArray<ARewildWingman*> Flying;
+	for (TActorIterator<ARewildWingman> It(GetWorld()); It; ++It)
+	{
+		if (It->IsAlive())
+		{
+			It->Order(Orders[Order], Target.Get());
+			Flying.Add(*It);
+		}
+	}
+	// One of them answers, in their own voice (lines in Noor, Kai, Amara order).
+	static const FName Answers[4][3] = {
+		{TEXT("oa2"), TEXT("oa1"), TEXT("oa3")}, {TEXT("oc2"), TEXT("oc1"), TEXT("oc3")},
+		{TEXT("of2"), TEXT("of1"), TEXT("of3")}, {TEXT("oe3"), TEXT("oe1"), TEXT("oe2")}};
+	URewildRadio* Radio = GetWorld()->GetSubsystem<URewildRadio>();
+	if (Radio && Flying.Num() > 0)
+	{
+		const int32 Who = Flying[FMath::RandRange(0, Flying.Num() - 1)]->GetIndex();
+		Radio->ChatterBy(Who, {Answers[Order][0], Answers[Order][1], Answers[Order][2]});
+	}
+	LastOrder = Order;
+	OrderShown = 2.5f;
+}
 
 void ARewildFighter::OnQuit(const FInputActionValue&)
 {
-	if (APlayerController* PC = Cast<APlayerController>(GetController()))
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (ARewildHUD* HUD = PC ? Cast<ARewildHUD>(PC->GetHUD()) : nullptr)
 	{
-		PC->ConsoleCommand(TEXT("quit"));
+		HUD->TogglePause();
 	}
+}
+
+void ARewildFighter::ApplySettings()
+{
+	MouseSensitivity = URewildSettings::Get()->MouseSensitivity();
 }
 
 void ARewildFighter::SetCockpitView(bool bCockpit)
@@ -337,6 +403,7 @@ void ARewildFighter::Tick(float DeltaSeconds)
 		UpdateDust();
 		return;
 	}
+	OrderShown = FMath::Max(0.f, OrderShown - Dt);
 	FindTarget();
 	if (bDemo)
 	{
@@ -627,7 +694,7 @@ void ARewildFighter::HandleDeath()
 	++DemoDeaths;
 	bFireHeld = false;
 	LockProgress = 0.f;
-	RespawnIn = RespawnTime;
+	RespawnIn = bRespawns ? RespawnTime : 1e9f;  // the story's mission handles it
 	ARewildExplosion::Spawn(GetWorld(), GetActorLocation(), Velocity, 1.6f);
 	Hull->SetVisibility(false, true);  // the hull and everything on it, cameras excepted
 	Hull->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -652,7 +719,7 @@ void ARewildFighter::Shoot(const FString& Why)
 {
 	if (APlayerController* PC = Cast<APlayerController>(GetController()))
 	{
-		PC->ConsoleCommand(TEXT("Shot"));
+		PC->ConsoleCommand(TEXT("Shot showui"));
 		UE_LOG(LogTemp, Display, TEXT("[rewild demo] shot %d at %.1f s: %s"), DemoShots, DemoTime, *Why);
 		++DemoShots;
 	}
@@ -752,7 +819,7 @@ void ARewildFighter::TickDemo(float Dt)
 	if (bDemoTargetAlive && EH && EH->IsDead())
 	{
 		++DemoKills;
-		if (DemoKills <= 3)
+		if (DemoKills <= 2)
 		{
 			QueueShot(0.08f, FString::Printf(TEXT("kill %d"), DemoKills));
 			QueueShot(0.6f, FString::Printf(TEXT("kill %d, after"), DemoKills));
@@ -783,7 +850,15 @@ void ARewildFighter::TickDemo(float Dt)
 			DemoQueue.RemoveAt(I);
 		}
 	}
-	if (DemoTime > 90.f || (DemoKills >= 3 && DemoQueue.Num() == 0 && DemoTime > 25.f))
+	// The story demo runs the whole mission and stops a few seconds after its end panel; free play after 90 s.
+	const ARewildMission* Mission = ARewildMission::Find(GetWorld());
+	if (Mission && DemoEndedAt < 0.f && (Mission->GetBeat() == ERewildBeat::Won || Mission->GetBeat() == ERewildBeat::Lost))
+	{
+		DemoEndedAt = DemoTime;
+	}
+	const bool bDone = Mission ? ((DemoEndedAt >= 0.f && DemoTime > DemoEndedAt + 12.f) || DemoTime > 480.f)
+		: (DemoTime > 90.f || (DemoKills >= 3 && DemoQueue.Num() == 0 && DemoTime > 25.f));
+	if (bDone)
 	{
 		UE_LOG(LogTemp, Display, TEXT("[rewild demo] done at %.1f s: %d kills, %d missiles, %d flare salvos, %d hits taken, %d deaths, hull %.0f%%, Reaper slugs fired %d"),
 			DemoTime, DemoKills, DemoMissilesFired, DemoFlareSalvos, DemoHitsTaken, DemoDeaths, Health->GetHullFraction() * 100.f, ARewildReaper::SlugsFired);

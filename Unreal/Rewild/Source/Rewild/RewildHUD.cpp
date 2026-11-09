@@ -9,6 +9,17 @@
 #include "RewildHealthComponent.h"
 #include "RewildMissiles.h"
 #include "RewildReaper.h"
+#include "Engine/Engine.h"
+#include "Engine/GameViewportClient.h"
+#include "Framework/Application/SlateApplication.h"
+#include "Kismet/GameplayStatics.h"
+#include "RewildGameMode.h"
+#include "RewildMission.h"
+#include "RewildRadio.h"
+#include "RewildSave.h"
+#include "RewildUI.h"
+#include "RewildWingman.h"
+#include "Widgets/SWeakWidget.h"
 
 namespace
 {
@@ -38,8 +49,9 @@ bool ARewildHUD::ToScreen(const FVector& World, FVector2D& Out) const
 void ARewildHUD::DrawHUD()
 {
 	Super::DrawHUD();
+	UpdateOverlay();
 	const ARewildFighter* Fighter = Cast<ARewildFighter>(GetOwningPawn());
-	if (!Fighter || !Canvas || Fighter->IsDead())
+	if (!Fighter || !Canvas || Fighter->IsDead() || IsMenuOpen() || ARewildGameMode::ModeOf(GetWorld()) == ERewildMode::Menu)
 	{
 		return;
 	}
@@ -124,6 +136,8 @@ void ARewildHUD::DrawHUD()
 			Pointer(Centre, EdgeRing, ScreenAngle(It->GetActorLocation()), 9.f * Scale, Dim, Line);
 		}
 	}
+
+	DrawWingmen(Scale);
 
 	// Locked on by the Harrow: an amber arc toward the locker, pulsing faster as the lock firms; a missile coming
 	// pulses faster still and gets a ring of its own.
@@ -248,5 +262,247 @@ void ARewildHUD::Arc(const FVector2D& Centre, float Radius, float FromDeg, float
 		const float A1 = FMath::DegreesToRadians(FMath::Lerp(FromDeg, ToDeg, float(I + 1) / Segments));
 		DrawLine(Centre.X + Radius * FMath::Cos(A0), Centre.Y + Radius * FMath::Sin(A0),
 			Centre.X + Radius * FMath::Cos(A1), Centre.Y + Radius * FMath::Sin(A1), Colour, Thickness);
+	}
+}
+
+void ARewildHUD::DrawWingmen(float Scale)
+{
+	// The crew: a small open diamond on each wingman still flying (Reapers get corners, the target a bracket).
+	const FLinearColor Friend(1.f, 1.f, 1.f, 0.5f);
+	for (TActorIterator<ARewildWingman> It(GetWorld()); It; ++It)
+	{
+		FVector2D S;
+		if (!It->IsAlive() || !ToScreen(It->GetActorLocation(), S))
+		{
+			continue;
+		}
+		const float R = 7.f * Scale;
+		DrawLine(S.X, S.Y - R, S.X + R, S.Y, Friend, 1.5f * Scale);
+		DrawLine(S.X + R, S.Y, S.X, S.Y + R, Friend, 1.5f * Scale);
+		DrawLine(S.X, S.Y + R, S.X - R, S.Y, Friend, 1.5f * Scale);
+		DrawLine(S.X - R, S.Y, S.X, S.Y - R, Friend, 1.5f * Scale);
+	}
+}
+
+void ARewildHUD::BeginPlay()
+{
+	Super::BeginPlay();
+	if (GEngine && GEngine->GameViewport)
+	{
+		SAssignNew(Overlay, SRewildOverlay);
+		OverlayHost = SNew(SWeakWidget).PossiblyNullContent(Overlay);
+		GEngine->GameViewport->AddViewportWidgetContent(OverlayHost.ToSharedRef(), 10);
+	}
+	if (ARewildGameMode::ModeOf(GetWorld()) == ERewildMode::Menu)
+	{
+		ShowMainMenu();
+	}
+}
+
+void ARewildHUD::EndPlay(const EEndPlayReason::Type Reason)
+{
+	if (OverlayHost.IsValid() && GEngine && GEngine->GameViewport)
+	{
+		GEngine->GameViewport->RemoveViewportWidgetContent(OverlayHost.ToSharedRef());
+	}
+	Overlay.Reset();
+	OverlayHost.Reset();
+	Super::EndPlay(Reason);
+}
+
+bool ARewildHUD::IsMenuOpen() const
+{
+	return Overlay.IsValid() && Overlay->IsPanelShown();
+}
+
+void ARewildHUD::UpdateOverlay()
+{
+	if (!Overlay.IsValid())
+	{
+		return;
+	}
+	const bool bMenu = ARewildGameMode::ModeOf(GetWorld()) == ERewildMode::Menu;
+	FText Name, Words;
+	float Alpha = 0.f;
+	const URewildRadio* Radio = GetWorld()->GetSubsystem<URewildRadio>();
+	if (!bMenu && Radio && URewildSettings::Get()->bSubtitles && Radio->GetSubtitle(Name, Words, Alpha))
+	{
+		Overlay->SetSubtitle(Name, Words, Alpha);
+	}
+	else
+	{
+		Overlay->SetSubtitle(FText::GetEmpty(), FText::GetEmpty(), 0.f);
+	}
+	const ARewildMission* Mission = ARewildMission::Find(GetWorld());
+	Overlay->SetObjective(Mission ? Mission->GetObjective() : FText::GetEmpty());
+	const ARewildFighter* Fighter = Cast<ARewildFighter>(GetOwningPawn());
+	if (Fighter && Fighter->GetOrderShown() > 0.f)
+	{
+		static const TCHAR* Orders[4] = {TEXT("Wing: attack my target"), TEXT("Wing: cover me"), TEXT("Wing: form up"), TEXT("Wing: weapons free")};
+		Overlay->SetNote(FText::FromString(Orders[FMath::Clamp(Fighter->GetLastOrder(), 0, 3)]), FMath::Clamp(Fighter->GetOrderShown() / 0.4f, 0.f, 1.f));
+	}
+	else
+	{
+		Overlay->SetNote(FText::GetEmpty(), 0.f);
+	}
+}
+
+void ARewildHUD::Panel(const FText& Title, const FText& Body, const TArray<FRewildMenuItem>& Items, bool bDim, TFunction<void()> OnBack)
+{
+	if (!Overlay.IsValid() || !PlayerOwner)
+	{
+		return;
+	}
+	PlayerOwner->SetShowMouseCursor(true);
+	FInputModeUIOnly Mode;
+	Mode.SetWidgetToFocus(Overlay);
+	Mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+	PlayerOwner->SetInputMode(Mode);
+	Overlay->ShowPanel(Title, Body, Items, bDim);
+	Overlay->OnBack = OnBack;
+	if (URewildRadio* Radio = GetWorld()->GetSubsystem<URewildRadio>())
+	{
+		Radio->SetListening(false);
+	}
+}
+
+void ARewildHUD::ClosePanel()
+{
+	if (Overlay.IsValid())
+	{
+		Overlay->HidePanel();
+	}
+	if (PlayerOwner)
+	{
+		PlayerOwner->SetShowMouseCursor(false);
+		PlayerOwner->SetInputMode(FInputModeGameOnly());
+	}
+	if (FSlateApplication::IsInitialized())
+	{
+		FSlateApplication::Get().SetAllUserFocusToGameViewport();
+	}
+	if (URewildRadio* Radio = GetWorld()->GetSubsystem<URewildRadio>())
+	{
+		Radio->SetListening(true);
+	}
+}
+
+void ARewildHUD::Open(const FString& Options)
+{
+	UGameplayStatics::SetGamePaused(GetWorld(), false);
+	UGameplayStatics::OpenLevel(GetWorld(), TEXT("/Game/FirstFight/Maps/L_FirstFight"), true, Options);
+}
+
+void ARewildHUD::ShowMainMenu()
+{
+	TArray<FRewildMenuItem> Items;
+	FText Body = FText::FromString(TEXT("Win Earth back from the Harrow."));
+	if (const URewildSave* Last = URewildSave::ReadLast())
+	{
+		const FString Options = Last->Options();
+		const FString Where = Last->Mode == TEXT("Free") ? TEXT("free play")
+			: Last->Checkpoint == 0 ? TEXT("First contact, from the start")
+			: Last->Checkpoint >= 4 ? TEXT("First contact, done: its last wave again")
+			: FString::Printf(TEXT("First contact, wave %d of 3"), Last->Checkpoint);
+		Items.Add({FText::FromString(TEXT("Continue")), [this, Options] { Open(Options); }});
+		Body = FText::FromString(FString::Printf(TEXT("Continue: %s."), *Where));
+	}
+	Items.Add({FText::FromString(TEXT("Story")), [this] { Open(TEXT("Mode=Story?Checkpoint=0")); }});
+	Items.Add({FText::FromString(TEXT("Free play")), [this] { Open(TEXT("Mode=Free")); }});
+	Items.Add({FText::FromString(TEXT("Settings")), [this] { ShowSettings(); }});
+	Items.Add({FText::FromString(TEXT("Quit")), [this] { if (PlayerOwner) { PlayerOwner->ConsoleCommand(TEXT("quit")); } }});
+	Panel(FText::FromString(TEXT("Rewild")), Body, Items, false, nullptr);
+}
+
+void ARewildHUD::ShowSettings()
+{
+	URewildSettings* S = URewildSettings::Get();
+	static const TCHAR* Mouse[3] = {TEXT("low"), TEXT("medium"), TEXT("high")};
+	TArray<FRewildMenuItem> Items;
+	Items.Add({FText::FromString(FString::Printf(TEXT("Mouse sensitivity: %s"), Mouse[FMath::Clamp(S->Mouse, 0, 2)])), [this, S]
+	{
+		S->Mouse = (S->Mouse + 1) % 3;
+		S->Store();
+		if (ARewildFighter* F = Cast<ARewildFighter>(GetOwningPawn()))
+		{
+			F->ApplySettings();
+		}
+		ShowSettings();
+	}});
+	Items.Add({FText::FromString(S->bSubtitles ? TEXT("Subtitles: on") : TEXT("Subtitles: off")), [this, S]
+	{
+		S->bSubtitles = !S->bSubtitles;
+		S->Store();
+		ShowSettings();
+	}});
+	const bool bInGame = ARewildGameMode::ModeOf(GetWorld()) != ERewildMode::Menu;
+	auto Back = [this, bInGame] { if (bInGame) { bPaused = false; TogglePause(); } else { ShowMainMenu(); } };
+	Items.Add({FText::FromString(TEXT("Back")), Back});
+	Panel(FText::FromString(TEXT("Settings")), FText::GetEmpty(), Items, bInGame, Back);
+}
+
+void ARewildHUD::TogglePause()
+{
+	if (ARewildGameMode::ModeOf(GetWorld()) == ERewildMode::Menu)
+	{
+		return;
+	}
+	const ARewildMission* Mission = ARewildMission::Find(GetWorld());
+	if (Mission && (Mission->GetBeat() == ERewildBeat::Won || Mission->GetBeat() == ERewildBeat::Lost) && IsMenuOpen())
+	{
+		return;  // the end-of-mission panel stays
+	}
+	if (bPaused)
+	{
+		bPaused = false;
+		UGameplayStatics::SetGamePaused(GetWorld(), false);
+		ClosePanel();
+		return;
+	}
+	bPaused = true;
+	UGameplayStatics::SetGamePaused(GetWorld(), true);
+	TArray<FRewildMenuItem> Items;
+	Items.Add({FText::FromString(TEXT("Resume")), [this] { TogglePause(); }});
+	if (Mission && Mission->GetCheckpoint() > 0)
+	{
+		const int32 C = Mission->GetCheckpoint();
+		Items.Add({FText::FromString(TEXT("Start the wave again")), [this, C] { Open(FString::Printf(TEXT("Mode=Story?Checkpoint=%d"), C)); }});
+	}
+	Items.Add({FText::FromString(TEXT("Settings")), [this] { ShowSettings(); }});
+	Items.Add({FText::FromString(TEXT("Main menu")), [this] { Open(TEXT("")); }});
+	Items.Add({FText::FromString(TEXT("Quit")), [this] { if (PlayerOwner) { PlayerOwner->ConsoleCommand(TEXT("quit")); } }});
+	const FText Body = Mission ? Mission->GetObjective() : FText::FromString(TEXT("Free play"));
+	Panel(FText::FromString(TEXT("Paused")), Body, Items, true, [this] { TogglePause(); });
+}
+
+void ARewildHUD::ShowMissionEnd(bool bWon)
+{
+	const ARewildMission* Mission = ARewildMission::Find(GetWorld());
+	const int32 Kills = Mission ? Mission->GetReaperKills() : 0;
+	const int32 C = Mission ? FMath::Max(1, Mission->GetCheckpoint()) : 1;
+	TArray<FRewildMenuItem> Items;
+	if (bWon)
+	{
+		Items.Add({FText::FromString(TEXT("Fly on")), [this]
+		{
+			// free play from here: the Harrow keep coming
+			if (ARewildGameMode* GM = GetWorld()->GetAuthGameMode<ARewildGameMode>())
+			{
+				GM->ContinueAsFreePlay();
+			}
+			ClosePanel();
+		}});
+		Items.Add({FText::FromString(TEXT("Main menu")), [this] { Open(TEXT("")); }});
+		Panel(FText::FromString(TEXT("First contact")),
+			FText::FromString(FString::Printf(TEXT("Mission complete. %d Reapers destroyed by the wing. Svalbard is waiting."), Kills)), Items, true, nullptr);
+	}
+	else
+	{
+		Items.Add({FText::FromString(TEXT("Try again")), [this, C] { Open(FString::Printf(TEXT("Mode=Story?Checkpoint=%d"), C)); }});
+		Items.Add({FText::FromString(TEXT("Main menu")), [this] { Open(TEXT("")); }});
+		Panel(FText::FromString(TEXT("Shot down")),
+			FText::FromString(Mission && Mission->GetCheckpoint() > 0
+				? FString::Printf(TEXT("The Harrow got you on wave %d of 3. Try again from the start of that wave."), C)
+				: FString(TEXT("The Harrow got you. Try again from the start."))), Items, true, nullptr);
 	}
 }
