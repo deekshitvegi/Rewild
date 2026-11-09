@@ -28,6 +28,8 @@ import { NO_MIRROR_LAYER, WaterSurface } from './WaterSurface';
 import { TORCH } from './surfaceShading';
 import { FORAGE_NAME, RECIPES, miningRate, type RecipeId } from './survival';
 import { Campfire } from './Campfire';
+import { updateWorldEnvironment, type WorldLook } from './worldEnvironment';
+import { gpuEpoch } from './models';
 import { ForagePlants } from './Forage';
 import { Asteroids } from './Asteroids';
 import { Fishing } from './Fishing';
@@ -92,6 +94,14 @@ const Lighting = ({ runtime }: { runtime: ExpeditionRuntime }) => {
     const sunColor = useMemo(() => new THREE.Color('#fff0dc'), []);
     const diskColor = useMemo(() => new THREE.Color('#ffb46e'), []);
     const light = useMemo(() => new THREE.Vector3(), []);
+    // What the models reflect follows the same light (worldEnvironment.ts), redrawn twice a second.
+    const gl = useThree((state) => state.gl);
+    const look = useMemo<WorldLook>(() => ({
+        up: new THREE.Vector3(), sun: new THREE.Vector3(), sunColor: new THREE.Color(),
+        zenith: new THREE.Color(), horizon: new THREE.Color(), ground: new THREE.Color(),
+    }), []);
+    const haze = useMemo(() => new THREE.Color(), []);
+    const nextLook = useRef(0);
     const toSun = useMemo(() => new THREE.Vector3(), []);
     const gasLook = useMemo(createZoneLook, []);
     const gasFlash = useMemo(() => new THREE.Color(0.75, 0.82, 1.0), []);
@@ -133,6 +143,23 @@ const Lighting = ({ runtime }: { runtime: ExpeditionRuntime }) => {
             hemiRef.current.color.copy(sky);
             hemiRef.current.groundColor.copy(ground);
             hemiRef.current.intensity = (0.55 + air * 0.35 * runtime.daylight) * (1 + 1.8 * (body?.biome?.overcast ?? 0) * (1 - skyBeyond(runtime))) + (gas?.flash?.level ?? 0) * 2.2;
+        }
+        const now = performance.now();
+        if (now >= nextLook.current && sunRef.current && hemiRef.current) {
+            nextLook.current = now + 500;
+            const fill = hemiRef.current.intensity;
+            if (body) look.up.copy(runtime.camera).sub(body.position).normalize();
+            else look.up.copy(light);
+            look.sun.copy(light);
+            look.sunColor.copy(sunRef.current.color).multiplyScalar(sunRef.current.intensity / 3.1);
+            look.zenith.copy(sky).multiplyScalar(fill);
+            look.horizon.copy(sky).multiplyScalar(fill);
+            if (body?.biome && air > 0) {
+                haze.set(body.biome.horizon).multiplyScalar(fill * (0.25 + 0.75 * runtime.daylight));
+                look.horizon.lerp(haze, Math.min(1, air));
+            }
+            look.ground.copy(ground).multiplyScalar(fill);
+            updateWorldEnvironment(gl, gpuEpoch, look);
         }
     });
     return (
