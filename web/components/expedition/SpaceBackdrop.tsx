@@ -296,7 +296,9 @@ export const SpaceBackdrop = ({ runtime }: { runtime: ExpeditionRuntime }) => {
         stars.geometry.dispose(); stars.material.dispose();
     }, [nebula, stars]);
 
-    useFrame(({ camera }) => {
+    // How far the eye has adjusted to a bright world in view (0 = dark-adapted, 1 = set for daylight).
+    const adapted = useRef(-1);
+    useFrame(({ camera }, delta) => {
         // The sky turns as the game's frame follows the world the player is at (motion.ts).
         SKY.value.setFromMatrix4(skyMatrix.makeRotationFromQuaternion(runtime.motion.M));
         // A daytime sky hides the faint nebula and most stars. Under a night
@@ -305,9 +307,14 @@ export const SpaceBackdrop = ({ runtime }: { runtime: ExpeditionRuntime }) => {
         // On airless ground in sunlight the eye is set for the bright ground:
         // a black sky, the brighter stars only, no nebula to speak of.
         const sunlitGround = (1 - runtime.atmosphere) * runtime.daylight * runtime.nearGround;
-        // A sunlit world filling a few hundredths of the view sets the eye for daylight too (exposure.ts):
-        // black space behind it, the brightest stars only.
-        const glare = THREE.MathUtils.smoothstep(sunlitShare(runtime, camera), 0.002, 0.03);
+        // A sunlit world filling a few hundredths of the view sets the eye for daylight too (exposure.ts): black
+        // space behind it, the brightest stars only (the whole Earth from orbit fills about 5%). Eyes take a moment
+        // to adjust (about a second to the bright world, two or three back to the stars), so turning towards a
+        // planet dims the sky gently instead of switching it in one frame.
+        const target = THREE.MathUtils.smoothstep(sunlitShare(runtime, camera), 0.008, 0.045);
+        if (adapted.current < 0 || runtime.loading || delta > 0.5) adapted.current = target;
+        else adapted.current += (target - adapted.current) * (1 - Math.exp(-delta * (target > adapted.current ? 1.5 : 0.7)));
+        const glare = adapted.current;
         const fade = (1 - runtime.atmosphere * runtime.daylight * 0.85) * (1 - sunlitGround * 0.55) * (1 - glare * 0.75);
         const nebulaFade = fade * (1 - runtime.atmosphere * (1 - runtime.daylight) * 0.75) * (1 - sunlitGround * 0.7) * (1 - glare * 0.92);
         nebula.material.uniforms.uFade.value = nebulaFade;
