@@ -28,6 +28,8 @@ import { NO_MIRROR_LAYER, WaterSurface } from './WaterSurface';
 import { TORCH } from './surfaceShading';
 import { FORAGE_NAME, RECIPES, miningRate, type RecipeId } from './survival';
 import { Campfire } from './Campfire';
+import { updateWorldEnvironment, type WorldLook } from './worldEnvironment';
+import { gpuEpoch } from './models';
 import { ForagePlants } from './Forage';
 import { Asteroids } from './Asteroids';
 import { Fishing } from './Fishing';
@@ -92,6 +94,15 @@ const Lighting = ({ runtime }: { runtime: ExpeditionRuntime }) => {
     const sunColor = useMemo(() => new THREE.Color('#fff0dc'), []);
     const diskColor = useMemo(() => new THREE.Color('#ffb46e'), []);
     const light = useMemo(() => new THREE.Vector3(), []);
+    // What the models reflect follows the same light (worldEnvironment.ts), redrawn twice a second.
+    const gl = useThree((state) => state.gl);
+    const look = useMemo<WorldLook>(() => ({
+        up: new THREE.Vector3(), sun: new THREE.Vector3(), sunColor: new THREE.Color(),
+        zenith: new THREE.Color(), horizon: new THREE.Color(), ground: new THREE.Color(),
+    }), []);
+    const haze = useMemo(() => new THREE.Color(), []);
+    const nextLook = useRef(0);
+    const lastLook = useRef('');
     const toSun = useMemo(() => new THREE.Vector3(), []);
     const gasLook = useMemo(createZoneLook, []);
     const gasFlash = useMemo(() => new THREE.Color(0.75, 0.82, 1.0), []);
@@ -133,6 +144,45 @@ const Lighting = ({ runtime }: { runtime: ExpeditionRuntime }) => {
             hemiRef.current.color.copy(sky);
             hemiRef.current.groundColor.copy(ground);
             hemiRef.current.intensity = (0.55 + air * 0.35 * runtime.daylight) * (1 + 1.8 * (body?.biome?.overcast ?? 0) * (1 - skyBeyond(runtime))) + (gas?.flash?.level ?? 0) * 2.2;
+        }
+        const now = performance.now();
+        if (now >= nextLook.current && sunRef.current && hemiRef.current) {
+            nextLook.current = now + 1000;
+            const fill = hemiRef.current.intensity;
+            if (body) look.up.copy(runtime.camera).sub(body.position).normalize();
+            else look.up.copy(light);
+            look.sun.copy(light);
+            look.sunColor.copy(sunRef.current.color).multiplyScalar(sunRef.current.intensity / 3.1);
+            look.zenith.copy(sky).multiplyScalar(fill);
+            look.horizon.copy(sky).multiplyScalar(fill);
+            if (body?.biome && air > 0) {
+                haze.set(body.biome.horizon).multiplyScalar(fill * (0.25 + 0.75 * runtime.daylight));
+                look.horizon.lerp(haze, Math.min(1, air));
+            }
+            look.ground.copy(ground).multiplyScalar(fill);
+            // How much light the models get from all round matches what the ground gets (surfaceShading), which a
+            // dim twilight sky alone does not give them: keep the world's colours, set the strength by the hour.
+            const lum = (c: THREE.Color) => 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
+            const mean = (lum(look.zenith) + lum(look.horizon) + lum(look.ground)) / 3;
+            const target = air > 0 ? THREE.MathUtils.lerp(0.2, 0.8, runtime.daylight) : 0.08;
+            const gain = THREE.MathUtils.clamp(target / Math.max(mean, 1e-3), 0.5, 8);
+            // Paint and metal keep most of their own colour: a third of the sky's tint, the rest grey of the same
+            // brightness (a white hull reflecting a teal sky and green grass at full strength read as dirty).
+            for (const c of [look.zenith, look.horizon, look.ground]) {
+                c.multiplyScalar(gain);
+                const grey = lum(c);
+                c.lerp(haze.setRGB(grey, grey, grey), 0.65);
+            }
+            // The horizon is the brightest part of a sky with air: what makes a glossy hull gleam along its sides.
+            if (air > 0) look.horizon.multiplyScalar(1.35);
+            // Redrawn only when the light has really changed (the hour, the weather, another world): measured 9 Nov,
+            // one redraw is about 8% of a frame's work, so it is kept to a second apart at most.
+            const key = [look.sun.x, look.sun.y, look.sun.z, look.up.x, look.up.y, look.up.z, look.sunColor.r, look.sunColor.g,
+                look.zenith.r, look.zenith.g, look.zenith.b, look.horizon.r, look.ground.g].map((v) => Math.round(v * 100)).join();
+            if (key !== lastLook.current) {
+                lastLook.current = key;
+                updateWorldEnvironment(gl, gpuEpoch, look);
+            }
         }
     });
     return (

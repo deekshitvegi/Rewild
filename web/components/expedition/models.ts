@@ -3,7 +3,7 @@ import { trackLoad } from './loadProgress';
 import { detailBudget } from './detailBudget';
 import * as THREE from 'three';
 import { GLTFLoader, type GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { worldEnvironment } from './worldEnvironment';
 
 /**
  * The Expedition's sculpted models (public/models/expedition, see its
@@ -341,24 +341,11 @@ export const useModel = (name: ModelName | null): GLTF | null => {
     return model;
 };
 
-const environments = new WeakMap<THREE.WebGLRenderer, { texture: THREE.Texture; epoch: number }>();
-
 /**
- * Something for the models' metal and glass to reflect: a soft studio light
- * box, prefiltered once per renderer. Only the models use it; the worlds are
- * lit by their own shaders.
+ * Something for the models' metal, glass and paint to reflect: the world they stand in (worldEnvironment.ts),
+ * one shared map that follows the light. It was a studio light box until 9 Nov.
  */
-export const modelEnvironment = (renderer: THREE.WebGLRenderer) => {
-    const known = environments.get(renderer);
-    if (known && known.epoch === gpuEpoch) return known.texture;
-    const pmrem = new THREE.PMREMGenerator(renderer);
-    const room = new RoomEnvironment();
-    const texture = pmrem.fromScene(room, 0.04).texture;
-    room.dispose();
-    pmrem.dispose();
-    environments.set(renderer, { texture, epoch: gpuEpoch });
-    return texture;
-};
+export const modelEnvironment = (renderer: THREE.WebGLRenderer) => worldEnvironment(renderer, gpuEpoch);
 
 /** Point every standard material in a model at the reflections above. */
 export const useEnvironmentOn = (root: THREE.Object3D | null, renderer: THREE.WebGLRenderer, intensity: number) => {
