@@ -5,6 +5,7 @@ import { EXPEDITION_BODIES, findBody, formatDistance, type ExpeditionBody } from
 import { findExpedition, startRun } from './expeditions';
 import { beginExpedition } from './Argo';
 import { fallClock, fallStage, formatShipTime } from './fall';
+import { BEAT } from './crossing';
 import { cue, type ExpeditionRuntime } from './runtime';
 import { directionToBody, fromStart, motionDate, turnWithWorld } from './motion';
 import type { ExpeditionInput } from './input';
@@ -169,6 +170,8 @@ interface Snapshot {
     /** The expedition under way: its name, what to do now, the live numbers. */
     expedition: { title: string; stage: string; detail: string } | null;
     deaths: number;
+    /** In the throat of a crossing (crossing.ts): the HUD steps aside for it, as it did for the film. */
+    crossing: boolean;
     /** A predator stalking (0.3..0.8) or charging (1) the explorer. */
     danger: number;
     /** By a sealed vault: its runes in the order to light them, how many are lit, the seconds left. */
@@ -824,6 +827,7 @@ const buildSnapshot = (runtime: ExpeditionRuntime, width: number, height: number
             return run && def ? { title: def.title, ...def.status(run, runtime) } : null;
         })(),
         deaths: runtime.stats.deaths ?? 0,
+        crossing: !!runtime.transit && runtime.transit.t < BEAT.out + 0.3,
         danger: walker ? runtime.fauna.danger : 0,
         radio: radioSnapshot(runtime),
         scan: runtime.scan.life ? { name: runtime.scan.life.name, progress: runtime.scan.progress, known: runtime.stats.aliens.includes(runtime.scan.life.id) } : null,
@@ -1225,7 +1229,7 @@ export const ExpeditionHUD = ({ runtime, input, onExit, progress, graphics }: {
     const controls = s?.mode === 'walk' ? WALK_CONTROLS : SHIP_CONTROLS;
 
     return (
-        <div ref={rootRef} className={`expedition-hud${s?.discovery ? ' has-card' : ''}`} aria-live="polite">
+        <div ref={rootRef} className={`expedition-hud${s?.discovery ? ' has-card' : ''}${s?.crossing ? ' is-crossing' : ''}`} aria-live="polite">
             {s && (
                 <>
                     <div className="expedition-hud__left">

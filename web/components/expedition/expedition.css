@@ -30,6 +30,14 @@
   text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
 }
 
+/* In the throat of a crossing the HUD steps aside: the sequence, its captions and the loading line only. */
+.expedition-hud > * {
+  transition: opacity 600ms ease;
+}
+.expedition-hud.is-crossing > * {
+  opacity: 0;
+}
+
 .expedition-hud button {
   pointer-events: auto;
 }
