@@ -7,7 +7,7 @@ Unreal/**/.vs/
 Unreal/**/*.sln
 Unreal/**/*.VC.db
 # Web version and tools
-node_modules/
+node_modules
 dist/
 .vite/
 .env*
