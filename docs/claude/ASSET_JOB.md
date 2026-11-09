@@ -142,3 +142,25 @@ on 4 cores made every frame take 7 minutes).
   half the screen: a 1.5 m spot and a 1 m ring spreading 7 m from the hit, peaking near 1.5x mid-grey (9 Nov).
 - Save the checklist and the script into the repo folder before any long run: a power cut on 9 Nov lost two
   builds' work except what was already on disk.
+- Earth from orbit (web game, 9 Nov): a faint nebula behind a sunlit planet was the first thing that read as fake.
+  Every photograph shows space at RGB 0-4 there; dim the backdrop by the lit world's share of the frame (gone by 3%).
+- Invented cloud noise made blobs all of one size with hard edges ("paper"): a real satellite cloud map (3,840 px,
+  CC BY 4.0) gave fronts, spirals and soft fibrous edges at once. Its greys are gamma-encoded: as opacity they need a
+  linear ramp from 0.08 to 0.55. A 1.6 power left 1.7% of the disc above 200/255 (Apollo 17: 22.7%); a floor of 0.04
+  laid a white veil over all the sea (darkest quarter 82, 106, 129 against 59, 67, 87).
+- The game's clouds stand at 4.7% of Earth's radius (560 m on a 12 km world) where a real limb is about 1%: seen from
+  orbit they stood above the blue line. Clouds and air settle towards the ground as the camera climbs (to 22% of
+  their height by four times it), so the limb stays thin with the clouds inside it. Volume cumulus drawn from 1,200 m
+  up stood over the limb like a fence and hid the deck's weather within 13 km: from above the weather, the deck alone.
+- Rivers narrower than a pixel drew as broad teal nets over whole continents from high up: weight a river's water
+  by the share of the pixel it covers (a 14 m channel over the pixel's footprint).
+- A Chapman approximation from memory was 20% low at grazing; the erfc-bound form sqrt(2x)/(y+sqrt(y^2+4/pi)) is
+  within 5% from overhead to grazing. Check an approximation numerically before tuning colours on top of it.
+- Single scattering saturates wrongly with few samples: integrate segment by segment as (scattering / extinction) x
+  the drop in transmittance. Even then the clouds along the limb came out orange (their light seen through a long
+  column keeps only its red); real limbs over cloud are white-blue (light scattered many times): keep half the
+  colour of the extinction and give the air's light at least a hazy horizon's brightness.
+- Background dev servers in a cloud session stop after two hours (one stopped in the middle of a nine-view render):
+  restart them before a long run.
+- Wikimedia refuses this machine's API searches and full-size files (rate limit); its standard thumbnail widths
+  (1280, 3840) still download one at a time.
