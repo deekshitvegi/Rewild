@@ -230,7 +230,10 @@ const cumulusLayer: CloudLayerSpec = {
     shade: new THREE.Color('#8e98a8'),
     cover: true,
 };
-const CUMULUS_CEILING = 9000;
+// (Earth only, where the deck's photographed cover gives them their place.) Above the space view's start
+// (earthSky.ts) the deck alone draws them, settling with the air and veiled by it: cumulus drawn from 1,200 m up
+// stood over the limb like a fence and hid the deck's weather inside 13 km (High, 9 Nov).
+const CUMULUS_CEILING = 800;
 const CUMULUS_REACH = 22000;
 const cumulusOf = (runtime: ExpeditionRuntime, body: ExpeditionBody) =>
     runtime.features.volumeClouds && runtime.altitude < CUMULUS_CEILING && runtime.underwater <= 0 && runtime.cloudCover?.body === body ? runtime.cloudCover : null;
