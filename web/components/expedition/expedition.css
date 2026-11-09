@@ -2028,6 +2028,43 @@
   transform-origin: left center;
 }
 
+/* The end of the fall: the death, on the black. */
+.expedition-fall__card {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  padding: 0 24px;
+  text-align: center;
+  opacity: 0;
+}
+
+.expedition-fall__card[hidden] {
+  display: none;
+}
+
+.expedition-fall__card strong {
+  color: #ff8a7a;
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.expedition-fall__card span {
+  max-width: 40ch;
+  color: rgba(232, 238, 245, 0.78);
+  font-size: 0.875rem;
+  line-height: 1.45;
+  letter-spacing: 0;
+}
+
+.expedition-fall__card .expedition-fall__count {
+  color: rgba(232, 238, 245, 0.55);
+  font-size: 0.8125rem;
+}
+
 .expedition-fall__skip {
   position: absolute;
   right: max(16px, env(safe-area-inset-right));

@@ -4,7 +4,7 @@ import { Apple, Gem, Landmark, PawPrint, ScrollText } from 'lucide-react';
 import { EXPEDITION_BODIES, findBody, formatDistance, type ExpeditionBody } from './bodies';
 import { findExpedition, startRun } from './expeditions';
 import { beginExpedition } from './Argo';
-import { fallStage } from './fall';
+import { fallClock, fallStage, formatShipTime } from './fall';
 import { cue, type ExpeditionRuntime } from './runtime';
 import { directionToBody, fromStart, motionDate, turnWithWorld } from './motion';
 import type { ExpeditionInput } from './input';
@@ -758,7 +758,12 @@ const buildSnapshot = (runtime: ExpeditionRuntime, width: number, height: number
     // Falling into TON 618: the log tells what is happening.
     if (runtime.fall.active) {
         const stage = fallStage(runtime.fall.time);
-        objective = { title: stage.title, body: stage.body };
+        // The ship's own clock (fall.ts): the real times, days of them, shown fast.
+        const clock = fallClock(runtime.fall);
+        const reading = clock.sinceHorizon < 0
+            ? `Ship's clock: horizon in ${formatShipTime(-clock.sinceHorizon)}.`
+            : `Ship's clock: ${formatShipTime(clock.sinceHorizon)} since the horizon, ${formatShipTime(clock.left)} to the centre.`;
+        objective = { title: stage.title, body: `${stage.body} ${reading}` };
         prompts.length = 0;
     }
 

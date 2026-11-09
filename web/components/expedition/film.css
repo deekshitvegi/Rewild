@@ -126,4 +126,70 @@
   .rewild-film, .rewild-film.is-closing { animation: none; transition-duration: 1ms; }
 }
 .rewild-film.is-card { background: #02030a; }
+
+/* The words of a line being heard (Voices.tsx Captions), as the films' captions were. */
+.rewild-caption {
+  position: fixed;
+  left: 50%;
+  bottom: calc(max(22px, env(safe-area-inset-bottom)) + 52px);
+  z-index: 1450;
+  width: min(720px, calc(100vw - 32px));
+  margin: 0;
+  transform: translateX(-50%);
+  color: #f4f1ec;
+  font-family: var(--font-ui, "Inter Variable", Inter, system-ui, sans-serif);
+  font-size: 1.0625rem;
+  font-weight: 500;
+  line-height: 1.45;
+  text-align: center;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 0 18px rgba(0, 0, 0, 0.6);
+  text-wrap: balance;
+  pointer-events: none;
+}
+.rewild-caption b {
+  margin-right: 6px;
+  color: #ffb547;
+  font-weight: 600;
+}
+@media (max-width: 600px) {
+  .rewild-caption { font-size: 0.9375rem; }
+}
+
+/* The crossing drawn by the game (WormholeFilm.tsx ThroatLoading): only a thin loading line under it. */
+.rewild-throat {
+  position: fixed;
+  left: 50%;
+  bottom: max(22px, env(safe-area-inset-bottom));
+  z-index: 1400;
+  width: min(280px, calc(100vw - 48px));
+  transform: translateX(-50%);
+  color: rgba(244, 241, 236, 0.78);
+  font-family: var(--font-ui, "Inter Variable", Inter, system-ui, sans-serif);
+  text-align: center;
+  pointer-events: none;
+  transition: opacity 900ms ease-in-out 600ms;
+}
+.rewild-throat.is-ready { opacity: 0; }
+.rewild-throat__title {
+  margin: 0 0 8px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+.rewild-throat__bar {
+  height: 2px;
+  border-radius: 1px;
+  background: rgba(255, 255, 255, 0.16);
+  overflow: hidden;
+}
+.rewild-throat__bar span {
+  display: block;
+  height: 100%;
+  background: #ffb547;
+  transform-origin: left center;
+  transition: transform 300ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rewild-throat { transition-duration: 1ms; }
+}
 .rewild-film__preload { display: none; }

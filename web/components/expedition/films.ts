@@ -67,14 +67,19 @@ export const filmUrl = (id: FilmId) => {
     return `${import.meta.env.BASE_URL}${FILMS[id].src}.${webm ? 'webm' : 'mp4'}`;
 };
 
-/** Which film the crossing plays (Settings › Graphics › Wormhole film): the crew's, or the short one drawn by the game. */
-export type CrossingFilm = 'crew' | 'quick';
-const CROSSING_KEY = 'rewild-film';
+/**
+ * How the crossing is shown (Settings › Graphics › Wormhole crossing): drawn by the game as it happens
+ * (crossing.ts, the default since 9 Nov 2026: the films were not liked), or one of the old films, the
+ * crew's or the short one, kept for anyone who wants them.
+ */
+export type CrossingFilm = 'engine' | 'crew' | 'quick';
+const CROSSING_KEY = 'rewild-crossing';
 export const readCrossingFilm = (): CrossingFilm => {
     try {
-        return window.localStorage.getItem(CROSSING_KEY) === 'quick' ? 'quick' : 'crew';
+        const saved = window.localStorage.getItem(CROSSING_KEY);
+        return saved === 'crew' || saved === 'quick' ? saved : 'engine';
     } catch {
-        return 'crew';
+        return 'engine';
     }
 };
 export const saveCrossingFilm = (choice: CrossingFilm) => {

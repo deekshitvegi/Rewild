@@ -10,6 +10,8 @@ import { mouthRegion, type Region } from './region';
 import { createSaturnStandIn } from './saturnStandIn';
 import type { ExpeditionRuntime } from './runtime';
 import { compileSafely } from './compileSafely';
+import { throatCovers, throatHidesStalls } from './crossing';
+import { CROSSING_LAYER } from './WormholeTransit';
 
 /**
  * Everything beyond the planets: TON 618, and the two mouths of the wormhole
@@ -80,6 +82,8 @@ export const DeepSpace = ({ runtime, region }: { runtime: ExpeditionRuntime; reg
     const blackHole = useMemo(() => {
         const hole = createBlackHole(quality, skies.hole.texture);
         hole.mesh.userData.deferCompile = true;
+        // Traced inside the horizon too, where the camera sees only the ship and the traced sky (Player.tsx).
+        hole.mesh.layers.enable(CROSSING_LAYER);
         return hole;
     }, [quality, skies]);
     // TON 618 is traced into a picture of its own at a fraction of the screen's pixels, before the
@@ -92,6 +96,8 @@ export const DeepSpace = ({ runtime, region }: { runtime: ExpeditionRuntime; reg
     const holeView = useMemo(() => {
         const view = createHoleView();
         view.mesh.visible = false;
+        // Still drawn inside the horizon, where the camera sees only the ship and the traced sky (Player.tsx).
+        view.mesh.layers.enable(CROSSING_LAYER);
         return view;
     }, []);
     useEffect(() => () => { holeView.target.dispose(); holeView.material.dispose(); holeView.geometry.dispose(); }, [holeView]);
@@ -200,13 +206,14 @@ export const DeepSpace = ({ runtime, region }: { runtime: ExpeditionRuntime; reg
         scene.onBeforeRender = (_renderer, _scene, camera) => {
             // One a frame: the first sight of TON 618 or a mouth asks for three, eighteen draws of the
             // whole scene, which in one frame was a stall of its own as the player arrived.
-            if (camera === mainCamera && !busy && queue.current.length > 0) {
+            if (camera === mainCamera && !busy && queue.current.length > 0 && throatHidesStalls(runtime.transit)) {
                 busy = true;
                 const shot = queue.current.shift()!;
                 photograph(shot.target, shot.from, shot.withHole);
                 busy = false;
             }
-            if (camera === mainCamera && !busy && holeView.mesh.visible) {
+            // (Not behind the throat of a crossing, which covers it.)
+            if (camera === mainCamera && !busy && holeView.mesh.visible && !throatCovers(runtime.transit)) {
                 busy = true;
                 traceHole(camera);
                 busy = false;

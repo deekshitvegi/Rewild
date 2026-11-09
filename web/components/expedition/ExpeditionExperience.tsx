@@ -42,7 +42,9 @@ import { DeepSpace } from './DeepSpace';
 import { BLACK_HOLE, WORMHOLES } from './deepSpace';
 import { EXPEDITION_BODIES, findBody } from './bodies';
 import { FallReadout } from './FallReadout';
-import { beginFall, seekFall } from './fall';
+import { Captions, Voices } from './Voices';
+import { bodyWarp, screenFx } from './spacetime';
+import { beginFall, countFallDeath, seekFall } from './fall';
 import { lettersToLearn, loadProgress, saveProgress, type ExpeditionProgress } from './glyphs';
 import { storyState } from './quests';
 import { medalsRaised, newlyMet, rankName } from './challenges';
@@ -498,6 +500,9 @@ export default function ExpeditionExperience({ onExit, onReady, start, quality: 
     }, [runtime]);
     const finishFall = useCallback(() => {
         setFalling(false);
+        // Spaghettified (fall.ts): a death like any other, counted once, skipped or not.
+        const death = countFallDeath(runtime.fall, runtime.stats, performance.now() / 1000);
+        if (death) runtime.lastDeath = death;
         runtime.fall.active = false;
         // Nothing comes back out of a black hole: the log ends, and a new
         // ship leaves the wormhole by Saturn.
@@ -603,7 +608,7 @@ export default function ExpeditionExperience({ onExit, onReady, start, quality: 
     useEffect(() => {
         if (!import.meta.env.DEV) return undefined;
         const debug = window as unknown as { __expedition?: unknown };
-        debug.__expedition = { runtime, input, sites: DATA_SITES, wormholes: WORMHOLES, blackHole: BLACK_HOLE, bodies: EXPEDITION_BODIES, beginFall, seekFall, globeFrame, riverProbe, landingZoneDirection, openingHeading, speciesOf, mindOf, waterDepth, groundHeight, groundSpot, alienSites: ALIEN_SITES, sitePosition, derelict: DERELICT, vaults: VAULTS, vaultFrame, fromEquatorial, forceWeather, historicSites: HISTORIC_SITES, siteFrame, expeditions: EXPEDITIONS, startRun, motionTools: { fromStart, toStart, turnWithWorld, directionToGame, directionToBody, toUniverse, changeWarp, startOf } };
+        debug.__expedition = { spacetime: { bodyWarp, screenFx }, runtime, input, sites: DATA_SITES, wormholes: WORMHOLES, blackHole: BLACK_HOLE, bodies: EXPEDITION_BODIES, beginFall, seekFall, globeFrame, riverProbe, landingZoneDirection, openingHeading, speciesOf, mindOf, waterDepth, groundHeight, groundSpot, alienSites: ALIEN_SITES, sitePosition, derelict: DERELICT, vaults: VAULTS, vaultFrame, fromEquatorial, forceWeather, historicSites: HISTORIC_SITES, siteFrame, expeditions: EXPEDITIONS, startRun, motionTools: { fromStart, toStart, turnWithWorld, directionToGame, directionToBody, toUniverse, changeWarp, startOf } };
         return () => { delete debug.__expedition; };
     }, [runtime, input]);
 
@@ -721,6 +726,7 @@ export default function ExpeditionExperience({ onExit, onReady, start, quality: 
                 {!regionReady && crossing && region === crossing.to && <RegionGate key={`region-${crossing.id}`} onReady={markRegionReady} />}
                 <ArgoWatch runtime={runtime} />
                 <Soundscape runtime={runtime} />
+                <Voices runtime={runtime} />
                 <Radio runtime={runtime} />
                 {!compiled && <CompileGate key={`compile-${quality}`} onCompiled={markCompiled} />}
                 {compiled && <BackgroundCompile key={`background-${quality}-${region}`} />}
@@ -741,6 +747,7 @@ export default function ExpeditionExperience({ onExit, onReady, start, quality: 
             <ExpeditionHUD runtime={runtime} input={input} onExit={onExit} progress={progress} graphics={{ setting: graphics, detected, quality, features, onChange: changeGraphics, gpu, lowered }} />
             <WormholeFilm runtime={runtime} region={region} crossing={crossing} ready={regionReady} onClosed={closeCrossing} />
             {falling && <FallReadout runtime={runtime} onSkip={finishFall} />}
+            <Captions />
             {openLog && <DataLog site={openLog.site} known={progress.letters} learned={openLog.learned} onClose={closeLog} />}
             {lost && (
                 <div className="expedition-loading" role="alert">

@@ -20,6 +20,7 @@ const CHANNELS: { id: keyof SoundVolumes; label: string; what: string }[] = [
     { id: 'ship', label: 'Ship', what: 'Engines, the pulse drive, landing gear, re-entry, heat on the hull' },
     { id: 'body', label: 'Suit', what: 'Breathing, footsteps, the jetpack, the mining beam, eating, splashing' },
     { id: 'world', label: 'World', what: 'Wind, water, fire, thunder, animals, impacts' },
+    { id: 'voice', label: 'Voices', what: 'ARGO and the crew' },
     { id: 'radio', label: 'Radio', what: 'Static and signals' },
     { id: 'alerts', label: 'Alerts', what: 'Notices, menus, alarms, chapter and scan chimes' },
 ];
@@ -285,10 +286,11 @@ export const GraphicsPanel = ({ control, sound, onClose }: { control: GraphicsCo
     );
 };
 
-/** Settings › Graphics › Wormhole film: what the crossing plays while the other system loads. */
+/** Settings › Graphics › Wormhole crossing: how the crossing is shown while the other system loads. */
 const FILM_CHOICES: { value: CrossingFilm; label: string; what: string }[] = [
-    { value: 'crew', label: 'With the crew', what: 'The crew in the Argo as she goes through the throat, talking it through on the radio.' },
-    { value: 'quick', label: 'Quick', what: 'Eight seconds of the throat, drawn by the game: for crossings you have seen before.' },
+    { value: 'engine', label: 'In the game', what: 'Drawn as it happens: the Argo down the throat, the spiral of light, out into the other side.' },
+    { value: 'crew', label: 'Crew film', what: 'The old film of the crew in the Argo, talking it through on the radio.' },
+    { value: 'quick', label: 'Short film', what: 'The old eight-second film of the throat.' },
 ];
 const FilmSection = () => {
     const [film, setFilm] = useState(readCrossingFilm);
@@ -298,7 +300,7 @@ const FilmSection = () => {
     };
     return (
         <section className="expedition-graphics__group" aria-labelledby="expedition-graphics-film">
-            <h3 id="expedition-graphics-film">Wormhole film</h3>
+            <h3 id="expedition-graphics-film">Wormhole crossing</h3>
             <div className="expedition-graphics__segments" role="radiogroup" aria-labelledby="expedition-graphics-film">
                 {FILM_CHOICES.map((option) => (
                     <button key={option.value} type="button" role="radio" aria-checked={film === option.value} onClick={() => choose(option.value)}>
@@ -306,7 +308,7 @@ const FilmSection = () => {
                     </button>
                 ))}
             </div>
-            <p>Plays while the Argo crosses and the other system loads; once it has loaded you can skip it. {FILM_CHOICES.find((option) => option.value === film)?.what}</p>
+            <p>Shown while the Argo crosses and the other system loads. {FILM_CHOICES.find((option) => option.value === film)?.what}</p>
         </section>
     );
 };
