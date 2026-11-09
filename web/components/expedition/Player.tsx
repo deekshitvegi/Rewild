@@ -159,6 +159,15 @@ const Lighting = ({ runtime }: { runtime: ExpeditionRuntime }) => {
                 look.horizon.lerp(haze, Math.min(1, air));
             }
             look.ground.copy(ground).multiplyScalar(fill);
+            // How much light the models get from all round matches what the ground gets (surfaceShading), which a
+            // dim twilight sky alone does not give them: keep the world's colours, set the strength by the hour.
+            const lum = (c: THREE.Color) => 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
+            const mean = (lum(look.zenith) + lum(look.horizon) + lum(look.ground)) / 3;
+            const target = air > 0 ? THREE.MathUtils.lerp(0.1, 0.62, runtime.daylight) : 0.07;
+            const gain = THREE.MathUtils.clamp(target / Math.max(mean, 1e-3), 0.5, 8);
+            look.zenith.multiplyScalar(gain);
+            look.horizon.multiplyScalar(gain);
+            look.ground.multiplyScalar(gain);
             updateWorldEnvironment(gl, gpuEpoch, look);
         }
     });
