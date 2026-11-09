@@ -118,3 +118,5 @@ Open: the fireball's edge shows a little stepping up close; decals and markings 
 3. **Fighting.** Guns that need leading, shields that recharge, hull damage, explosions and debris, practice targets.
 4. **The Harrow.** Reapers (new model, ASSET_JOB), packs that flank, lock-on missiles and flares.
 5. **Wingmen and the mission.** Dev, Noor, Kai and Amara on the radio, orders, the mission's start, win and lose.
+   With it the main menu (Continue, Story, Free play) and saving (GAME_DESIGN.md, "How you play"): this mission is
+   the first story mission, the endless Reaper packs over Earth the first free play.

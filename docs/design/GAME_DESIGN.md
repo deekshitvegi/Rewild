@@ -164,6 +164,22 @@ missions each, in an order the player partly chooses.
 Open play: keep building Earth's cities and wild places, run the Solar System's bases and fleet, and skirmishes
 against Harrow remnants that still raid.
 
+## How you play: story, free play, continue (owner, 9 Nov 2026)
+
+"a story mode and a free mode where you can explore without worrying about any missions ... not forcing people to
+play story mode only ... and an option to continue the game where you left off". The main menu (Liquid Glass,
+sentence case, like the rest of the UI) has: **Continue**, **Story**, **Free play**, Settings, Quit.
+
+- **Story:** the campaign above, mission by mission, choices that cost or save lives.
+- **Free play:** the worlds without missions. Fly, explore, build bases, and fight when you choose: Harrow patrols
+  still roam and still fight hard (the game is meant to be difficult), but nothing pushes you on. Nobody is made to
+  play the story to enjoy the game.
+- **Continue:** the game saves by itself at every checkpoint, at each mission's start and end, after building, and
+  on quitting; Continue picks up the last game, story or free play, exactly where it was left. Story and free play
+  keep separate saves, with a few slots each.
+- First forms: the first fight's mission is the first story mission; the endless Reaper packs over Earth (today's
+  `-RewildHarrow`) are the first free play; the menu and the saves come with first fight milestone 5.
+
 ## What the player sees in the first hour (the bar for the first build)
 
 1. Haven at golden hour, the garden and the colony; build the pad and the hangar.

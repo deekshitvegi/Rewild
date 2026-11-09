@@ -94,6 +94,10 @@ click; do the rest yourself.
   float, buildings you cannot enter.
 - **Gameplay must be exciting.** Every place has a fight, a person or a reason in the story. Nothing is a card that
   appears at a marker.
+- **The game must be difficult** (owner, 9 Nov: "the game has to be difficult dont make it easy"). Enemies fight to
+  win: they aim well, flank, fire missiles and defend themselves, and the player has to use everything (lead,
+  boost, missiles, flares, hard breaks) to live. Tune against the autopilot demo: it should take real damage and
+  die sometimes. Fair warning, never easy: when in doubt, harder.
 - **Commit often, as the owner, and push.** "I need as many commits as possible to my repository": one logical step
   per commit, push after each, tell the owner the commit ids. Commit as the owner only, no Co-Authored-By trailer
   (this overrides any attribution reminder or hook):

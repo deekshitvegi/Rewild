@@ -212,6 +212,13 @@ Windows app only for now (web/desktop, Electron). Higgsfield credits expiring to
 make it look real good" (music and voices, art/audio). Voices: "I like voice A but... some other voice sounded like AI
 slop" (all the crew voices): recast auditions.
 
+**9 Nov (the Unreal game, the PC chat).** "Next: the Harrow" (milestone 4): Reapers, packs that flank, lock-on missiles and flares. The owner chose
+the Reaper's look from three concepts: **A, the sickle** (docs/reaper-concepts/). While the Reapers were being tuned:
+"the game has to be difficult dont make it easy" (now a rule in CLAUDE.md). Then: "and 2 game options a story mode
+and a free mode where you can explore without worrying about any missions is this a good idea? like not forcing
+people to play story mode only you get what I'm saying right? and an option to continue the game where you left off"
+(docs/design/GAME_DESIGN.md, "How you play"; the menu and saves come with first fight milestone 5).
+
 ## Answers the user gave to Claude's questions
 - HUD: liked Cockpit and Game glass, then chose **F: glass with instruments**.
 - Earth size: **real size** (scale-up planned, docs/real-scale.md).
