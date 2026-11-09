@@ -1,0 +1,34 @@
+{
+  "name": "rewild",
+  "productName": "Rewild",
+  "version": "0.1.0",
+  "description": "Rewild, the space game (web version), as a desktop app",
+  "author": "Deekshitth Vegi",
+  "private": true,
+  "main": "main.cjs",
+  "scripts": {
+    "site": "cd .. && npx vite build --base ./ --outDir desktop/site --emptyOutDir",
+    "start": "npm run site && electron .",
+    "app:win": "npm run site && electron-builder --win nsis",
+    "app:win-folder": "npm run site && electron-builder --win dir"
+  },
+  "devDependencies": {
+    "electron": "44.9.3",
+    "electron-builder": "26.17.0"
+  },
+  "build": {
+    "appId": "com.deekshitvegi.rewild",
+    "productName": "Rewild",
+    "directories": { "output": "release" },
+    "files": ["main.cjs", "icon.png", "package.json"],
+    "extraResources": [{ "from": "site", "to": "site" }],
+    "win": { "target": ["nsis"], "icon": "icon.png" },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Rewild"
+    }
+  }
+}
