@@ -155,7 +155,7 @@ const deckMaterial = (body: ExpeditionBody, radius: number, coverage: THREE.Text
             // nearer the square of them in light). Thin veils stay thin; the billows (close up) tear the
             // edges and open holes in the thin parts, not in the thick.
             float m = cov.r;
-            float density = pow(clamp((m - 0.05) / 0.72, 0.0, 1.0), 1.6);
+            float density = pow(clamp((m - 0.05) / 0.6, 0.0, 1.0), 1.2);
             density = clamp(density + fine * 0.5 * (1.0 - density * 0.6) * smoothstep(0.02, 0.2, density), 0.0, 1.0);
             // A storm fills the sky in.
             density += (1.0 - density) * uStorm * 0.85;
@@ -202,7 +202,7 @@ const deckMaterial = (body: ExpeditionBody, radius: number, coverage: THREE.Text
             #ifdef CLOUD_MAP
             float thick = density * (0.45 + 0.55 * m);
             // From above, thick cloud throws back more light than thin.
-            vec3 topLit = sunLit * (0.8 + 0.24 * smoothstep(0.2, 0.9, m));
+            vec3 topLit = sunLit * (0.95 + 0.4 * smoothstep(0.15, 0.8, m));
             #else
             float thick = density * (0.55 + 0.45 * cov.g);
             vec3 topLit = sunLit * (0.86 + 0.18 * (1.0 - thick)) + skyLit * 0.08;

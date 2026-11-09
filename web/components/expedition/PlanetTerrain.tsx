@@ -772,11 +772,16 @@ void main() {
     // far banks, where the corners are metres apart, as rows of teeth.
     // (The channel's depth less the bank's rise, as earth.ts terrainSurface and riverBank.)
     float riverDepth = (1.0 - smoothstep(0.012, 0.035, abs(vRiver))) * 3.2 - smoothstep(0.026, 0.07, abs(vRiver));
-    float edgeDepth = max(riverDepth, -vWater.y * 0.12);
+    float seaEdge = -vWater.y * 0.12;
+    float edgeDepth = max(riverDepth, seaEdge);
     // Out at sea, the depth at the corners (it knows the sea floor).
     waterHere.x = mix(max(edgeDepth, 0.0), vWater.x, smoothstep(30.0, 80.0, -vWater.y));
     float wetEdge = fwidth(edgeDepth) * 0.6 + 0.01;
-    wetHere = mix(smoothstep(-wetEdge, wetEdge, edgeDepth), smoothstep(0.0, 0.12, vWater.x), smoothstep(30.0, 80.0, -vWater.y));
+    // A river narrower than a pixel covers only that share of it: seen from high up, the channels had
+    // drawn as broad teal lines netting the whole continent (a channel is about 14 m across).
+    float riverCover = clamp(14.0 / max(length(fwidth(vLocalPos)), 1e-3), 0.0, 1.0);
+    float wetEdges = max(smoothstep(-wetEdge, wetEdge, seaEdge), smoothstep(-wetEdge, wetEdge, riverDepth) * riverCover);
+    wetHere = mix(wetEdges, smoothstep(0.0, 0.12, vWater.x), smoothstep(30.0, 80.0, -vWater.y));
     vec3 hue = globe / max(dot(globe, vec3(0.2126, 0.7152, 0.0722)), 1e-3);
     vec3 paletteHue = uPal[0] / max(dot(uPal[0], vec3(0.2126, 0.7152, 0.0722)), 1e-3);
     albedo = mix(albedo, albedo * clamp(hue / paletteHue, 0.25, 4.0), 0.7 * gentleHere * uGlobeReady);
@@ -869,9 +874,9 @@ void main() {
     vec3 Hglint = normalize(toEye + uSunDir);
     float nh = max(dot(vDir, Hglint), 1e-3);
     float nh2 = nh * nh;
-    float spread = exp(-(1.0 - nh2) / (nh2 * 0.045)) / (3.14159 * 0.045 * nh2 * nh2);
+    float spread = exp(-(1.0 - nh2) / (nh2 * 0.06)) / (3.14159 * 0.06 * nh2 * nh2);
     float fresnelGlint = 0.02 + 0.98 * pow(1.0 - max(dot(toEye, Hglint), 0.0), 5.0);
-    float glint = min(fresnelGlint * spread * 0.25 / max(dot(vDir, toEye), 0.12), 1.6) * 1.45 * 3.14159;
+    float glint = min(fresnelGlint * spread * 0.25 / max(dot(vDir, toEye), 0.12), 0.8) * 1.45 * 3.14159;
     color += uSunColor * glint * water * far * smoothstep(-0.02, 0.1, dot(vDir, uSunDir)) * gSunShade;
     #else
     float glint = pow(max(dot(vDir, normalize(toEye + uSunDir)), 0.0), 160.0);

@@ -27,6 +27,8 @@ export const SPACE_TO = 1100;
 /** From this height (m) the clouds and the air begin to settle; by about four times it they are at LIFT_FAR. */
 const LIFT_FROM = 650;
 const LIFT_FAR = 0.22;
+/** The share of the ground's haze gone from a few hundred metres up (measured 77% at 2 km from 250 m: grey). */
+const LOW_CLEAR = 0.4;
 
 /** How far the deck (and the air with it) has settled for a camera this high above the ground: 1 near, LIFT_FAR far. */
 export const liftAt = (height: number) => THREE.MathUtils.clamp(Math.pow(LIFT_FROM / Math.max(height, 1), 1.2), LIFT_FAR, 1);
@@ -40,7 +42,7 @@ export const scaleHeightAt = (body: ExpeditionBody, height: number) =>
 
 /** Real vertical optical depths of Earth's air (Rayleigh at 680, 550, 440 nm; haze at 550 nm). */
 const RAYLEIGH_DEPTH = new THREE.Vector3(0.0464, 0.1085, 0.2648);
-const HAZE_DEPTH = 0.06;
+const HAZE_DEPTH = 0.04;
 
 /**
  * The uniforms of the space view, shared by the air (Atmosphere.tsx) and the clouds (Clouds.tsx) of one world
@@ -49,6 +51,9 @@ const HAZE_DEPTH = 0.06;
 const VIEWS = new Map<string, ReturnType<typeof makeView>>();
 const makeView = () => ({
     uSpaceShare: { value: 0 },
+    // How much of the walker's haze (surfaceShading applyHaze) is taken away: by the space view from orbit, and
+    // a share of it from a few hundred metres up, above the haze that lies along the ground.
+    uHazeCut: { value: 0 },
     uSpaceH: { value: 100 },
     uSpaceBetaR: { value: new THREE.Vector3() },
     uSpaceBetaM: { value: 0 },
@@ -68,12 +73,13 @@ export const setSpaceView = (body: ExpeditionBody, height: number, ash = 0) => {
     const view = spaceViewOf(body);
     const H = scaleHeightAt(body, height);
     view.uSpaceShare.value = spaceShare(height);
+    view.uHazeCut.value = 1 - (1 - view.uSpaceShare.value) * (1 - LOW_CLEAR * THREE.MathUtils.smoothstep(height, 40, 350));
     view.uSpaceH.value = H;
     view.uSpaceBetaR.value.copy(RAYLEIGH_DEPTH).divideScalar(H);
     // Haze sits low (a sixth of the air's scale height); the ruined world's dust thickens it.
     const HM = Math.max(H / 6, 2);
     view.uSpaceHM.value = HM;
-    view.uSpaceBetaM.value = (HAZE_DEPTH + 0.22 * ash) / HM;
+    view.uSpaceBetaM.value = (HAZE_DEPTH + 0.08 * ash) / HM;
 };
 
 /**

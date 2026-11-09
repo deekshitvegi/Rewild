@@ -46,8 +46,10 @@ uniform float uStorm;
 uniform vec4 uUnderwater;
 uniform float uDust;
 uniform float uFlash;
-// Earth from above its weather (earthSky.ts): the air seen from orbit takes over from this haze (0 elsewhere).
+// Earth from above its weather (earthSky.ts): the air seen from orbit takes over from this haze, and from a few
+// hundred metres up some of it is below (0 elsewhere).
 uniform float uSpaceShare;
+uniform float uHazeCut;
 // The share of the sun's direct light a surface gets here: less in a cloud's shadow (Earth's ground sets it from
 // cloudShadow.ts before it is lit; 1 everywhere else).
 float gSunShade = 1.0;
@@ -173,7 +175,7 @@ vec3 applyHaze(vec3 color, vec3 localPos, vec3 up) {
     float thick = 1.0 + uStorm * 2.2 + uDust * 9.5;
     float haze = 1.0 - exp(-airDepth(uCamLocal, localPos) * 0.9 * uHaze * uAerial * thick);
     // (From orbit Earth's air is drawn over the ground as real air, Atmosphere.tsx: not twice.)
-    haze *= 1.0 - uSpaceShare;
+    haze *= 1.0 - uHazeCut;
     vec3 viewDir = normalize(localPos - uCamLocal);
     // Looking down through the air it is sky-blue, along the ground it is the
     // pale horizon colour.
@@ -314,5 +316,6 @@ export const createSurfaceUniforms = (body: ExpeditionBody) => {
         uDust: WEATHER_UNIFORMS.dust,
         uFlash: WEATHER_UNIFORMS.flash,
         uSpaceShare: biome?.space ? spaceViewOf(body).uSpaceShare : { value: 0 },
+        uHazeCut: biome?.space ? spaceViewOf(body).uHazeCut : { value: 0 },
     };
 };

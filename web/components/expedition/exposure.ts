@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { ExpeditionRuntime } from './runtime';
+import { EXPEDITION_BODIES, type ExpeditionBody } from './bodies';
 
 /**
  * How much of the picture a sunlit world fills (0 to 1, by its lit share of the frame): a camera (or an eye)
@@ -10,8 +11,23 @@ import type { ExpeditionRuntime } from './runtime';
 const toWorld = new THREE.Vector3();
 const forward = new THREE.Vector3();
 
+/** The world that looks largest from the camera (the one it is at, or the nearest in sight). */
+const largest = (runtime: ExpeditionRuntime) => {
+    let best: ExpeditionBody | null = null;
+    let size = 0;
+    for (const body of EXPEDITION_BODIES) {
+        if (body.kind === 'star') continue;
+        const s = body.radius / Math.max(body.position.distanceTo(runtime.camera), 1);
+        if (s > size) {
+            size = s;
+            best = body;
+        }
+    }
+    return best;
+};
+
 export const sunlitShare = (runtime: ExpeditionRuntime, camera: THREE.Camera) => {
-    const body = runtime.currentBody;
+    const body = runtime.currentBody ?? largest(runtime);
     if (!body || body.kind === 'star' || !body.sunDirection) return 0;
     toWorld.copy(body.position).sub(runtime.camera);
     const distance = toWorld.length();
