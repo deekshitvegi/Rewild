@@ -158,6 +158,10 @@ The cloud session improves `web/` here (the portfolio repo keeps its own frozen 
   https://claude.ai/artifact/WRxDSjrEv6LtXYHjRTQbaK (owner still to pick A/B).
 - **Windows app** of the web game: `web/desktop` (Electron; `npm run app:win` on the PC). The owner chose a Windows app
   only for now (no website hosting). A Hostinger zip of the portfolio site with the improved game is wanted later.
+- **Preview** (the owner plays it in the Claude app): https://claude.ai/artifact/CWGQyhLzPfprRkdnnaMi7a, version 7 =
+  ae9ff76 (9 Nov), now built from this repo's `web/` (`web/tools/claude/prep_site_rw.sh`: packed models, page.html);
+  published files in `web/tools/claude/published-preview.txt` for delta publishes (filesdelta.py). Before each
+  publish: the strict-CSP check (cspserve.py + sitecheck, 0 violations).
 - Test tools: memory test, light pictures and crash checks under the session scratchpad; dev servers web/ on 4201
   (working copy) and 4202 (`rewild-main` worktree, main).
 
