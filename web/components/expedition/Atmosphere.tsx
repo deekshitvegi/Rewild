@@ -364,7 +364,9 @@ export const Atmosphere = ({ body, runtime }: { body: ExpeditionBody; runtime: E
         const shell = new THREE.ShaderMaterial({
             vertexShader: spaceVertex,
             fragmentShader: spaceFragment,
-            defines: { SPACE_STEPS: runtime.quality === 0 ? 4 : runtime.quality === 1 ? 6 : 8 },
+            // (Steps each side of the ray's lowest point; Low measured +15 to +130 ms of a 0.2-1.3 s software frame
+            // with 4, so 3 there.)
+            defines: { SPACE_STEPS: runtime.quality === 0 ? 3 : runtime.quality === 1 ? 6 : 8 },
             side: THREE.FrontSide,
             transparent: true,
             depthWrite: false,
