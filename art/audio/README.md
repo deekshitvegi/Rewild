@@ -28,3 +28,10 @@ Intercom chain: high-pass 320 Hz, low-pass 3.4 kHz, 5:1 compression, tanh soft c
 
 The lines are in docs/films/OPENING.md and web/components/expedition/films.ts (crossing), plus four new ones for
 the fall into TON 618.
+
+## The film lines, final cast (9 Nov)
+
+Owner's picks: ARGO voice A ("Vesper"), Dev 2 ("Xavier"), Amara 3 ("Naomi"), Kai 1 ("Caspian"), Noor 2 ("Nora"),
+all ElevenLabs v4 presets. One file per line in `lines/`: `o*` opening, `r*` back at Earth, `c01..c10` the wormhole
+crossing, `b1..b4` the fall into TON 618. Crew lines also come as `-com.mp3` (over the ship's intercom, the chain
+above); ARGO stays dry (she is the ship).
