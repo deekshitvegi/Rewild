@@ -210,3 +210,17 @@ on 4 cores made every frame take 7 minutes).
   - PixelDepth is in centimetres: a roughness ramp written for 25 km ran over 250 m.
   - A coast term of half a cell in the tile error split every coast in view to 3-pixel cells: 3,300 tiles from
     300 m. A tenth of a cell keeps coasts sharp from orbit at under 1,000 tiles.
+- Scanned ground on Haven (9 Nov), six rounds:
+  - A 16 m aerial scan showed its repeat as a grid of dots from 300 m. Three things together cleared it: divide it by
+    its own copy blurred to 2 m (its big patches go), read it through a warp, and read the blurred copy through the
+    same warp. Read unwarped, the copy put the grid straight back.
+  - Measure a warp before choosing its gain. The scan blurred to 32 m cells varies by only 10%, so "x20" moved it
+    2 m: the aerial scans need about 8 m, the near ones about 1 m. 14 m from a copy blurred to 4-8 m bent so sharply
+    that the near scans smeared into streaks.
+  - The grass scans average yellow-brown, so their grey stones divided out as blue and read as lilac patches on
+    teal. Take only light and dark from a scan whose hue is not the world's.
+  - A lattice at the tiles' point spacing was the ground's flat triangles shadowing themselves one by one under a
+    low light. The shadows' normal bias at 3 (default 0.5) cleared it; so did shadows off. It showed only after
+    flying down from orbit, so test views in the order the player meets them, not one at a time.
+  - Noise drawn down to two point spacings lines up with the grid. Stop the bumps at six; the normal maps carry the rest.
+  - The first flight after a material change stalls (300-400 ms frames) while shaders compile. Time the second flight.

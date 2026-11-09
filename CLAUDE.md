@@ -92,7 +92,9 @@ click; do the rest yourself.
   `-RewildInvulnerable` to reach the end), `-RewildUIShots` photographs the menus; shots in
   Unreal/Rewild/Saved/Screenshots/WindowsEditor. A window that pops up during a test is the test: leave it alone.
 - Worlds (9 Nov): `Play Haven.bat` flies Haven (/Game/Worlds/Haven/L_Haven, ARewildWorldGameMode). Build it with
-  `Scripts/haven/prepare_haven.py` (system Python) then `Scripts/haven/build_haven.py` (editor). `-RewildWorldShots`
+  `Scripts/haven/fetch_scans.py` and `prepare_haven.py` (system Python, `-I`; the scanned ground, 330 MB, stays out
+  of git in RawSources and /Game/Generated) then `Scripts/haven/build_haven.py` (editor). `-RewildWorldFly` flies
+  down from orbit on autopilot, logs frame times and takes shots. `-RewildWorldShots`
   takes the HAVEN.md stills and quits (`-RewildStill=globe,ship` for some), `-RewildAltitude=<m>` starts low. Ray
   tracing is on (Lumen sees the planets' ground only through it): the first editor start after a shader change
   recompiles for a long while.

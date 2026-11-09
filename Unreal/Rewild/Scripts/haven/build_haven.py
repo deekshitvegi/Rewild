@@ -1,7 +1,8 @@
 """Build Haven's level and the planet's materials (docs/unreal/HAVEN.md, step 3: the planet system).
 
-Run prepare_haven.py first (system Python), then this in the editor (rewild_shots.py's command line). It imports the
-ground photographs into /Game/Worlds/Haven/Textures, makes M_PlanetGround and M_PlanetSea in
+Run fetch_scans.py and prepare_haven.py first (system Python), then this in the editor (rewild_shots.py's command
+line). It imports the scanned ground (Poly Haven, CC0, packed by prepare_haven.py) into /Game/Generated/Haven/Scans
+(not in git: about 300 MB; rebuilt on each PC), makes M_PlanetGround, M_PlanetSea and M_PlanetSeaFar in
 /Game/Worlds/Haven/Materials, and builds /Game/Worlds/Haven/L_Haven: the planet (ARewildPlanet, its centre 5,730 km
 under the colony, which stands at the world origin), TON 618's light 35 degrees up toward +X, the sky light and the
 exposure. The game mode is ARewildWorldGameMode. Then play it:
@@ -26,6 +27,18 @@ DEST = "/Game/Worlds/Haven"
 LEVEL = DEST + "/L_Haven"
 TAG = "haven_build"
 RAW = os.path.join(unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_dir()), "RawSources", "haven")
+SCANS = os.path.join(RAW, "scans")
+SCAN_DEST = "/Game/Generated/Haven/Scans"
+# Each layer's scan and the size it repeats at, in metres: a fraction of 2,048 m, so the pattern lines up across
+# tiles (RewildPlanet), close to the scan's real size (Poly Haven's figure in brackets).
+LAYERS = {
+    "Grass": ("grass_ground", 2.0),          # (2.5 m) the grassland at your feet
+    "GrassMid": ("aerial_grass_rock", 16.0),  # (15 m) the same seen from the ship, out to 6 km
+    "Rock": ("rock_face_03", 4.0),           # (2.7 m) steep ground
+    "RockMid": ("aerial_rocks_02", 64.0),     # (50 m) mountains from the air
+    "Sand": ("coast_sand_04", 4.0),          # (3.9 m) the coves
+    "Bed": ("mud_forest", 2.0),              # (2.35 m) the seabed and the shallows
+}
 
 R_HAVEN = 573_000_000.0  # cm (5,730 km)
 TON618_ELEVATION = 35.0   # degrees above the colony's horizon, toward +X (east)
@@ -87,21 +100,23 @@ def custom(mat, x, y, name, code, inputs, out_type, extra_outputs=()):
     return c
 
 
-def import_texture(name, normal):
-    folder = DEST + "/Textures"
-    path = f"{folder}/{name}"
-    task = unreal.AssetImportTask()
-    task.filename = os.path.join(RAW, name + ".png")
-    task.destination_path = folder
-    task.destination_name = name
-    task.automated = True
-    task.replace_existing = True
-    task.save = False
-    tools.import_asset_tasks([task])
+def import_scan(scan, part):
+    """<scan>_A (colour and height: sRGB colour) or <scan>_B (normal, roughness, occlusion: linear), as BC7."""
+    name = f"T_{scan}_{part}"
+    path = f"{SCAN_DEST}/{name}"
+    if not assets.does_asset_exist(path):
+        task = unreal.AssetImportTask()
+        task.filename = os.path.join(SCANS, scan, f"{scan}_{part}.png")
+        task.destination_path = SCAN_DEST
+        task.destination_name = name
+        task.automated = True
+        task.replace_existing = True
+        task.save = False
+        tools.import_asset_tasks([task])
     tex = unreal.load_asset(path)
-    if normal:
-        tex.set_editor_property("compression_settings", unreal.TextureCompressionSettings.TC_NORMALMAP)
-        tex.set_editor_property("srgb", False)
+    tex.set_editor_property("compression_settings", unreal.TextureCompressionSettings.TC_BC7)
+    tex.set_editor_property("srgb", part == "A")
+    tex.set_editor_property("lod_group", unreal.TextureGroup.TEXTUREGROUP_WORLD)
     assets.save_loaded_asset(tex)
     return tex
 
@@ -113,31 +128,106 @@ def f3(c):
 GROUND_HLSL = """
 float3 P = float3(UV0.x, UV0.y, UV1.x);
 float3 n = normalize(Nrm);
-float3 bw = pow(abs(n), 4.0);
+float3 bw = pow(abs(n), 6.0);
 bw /= (bw.x + bw.y + bw.z);
 float4 W = float4(Wrgb.rgb, Wa);
 W /= max(1e-3, W.x + W.y + W.z + W.w);
-float near = saturate(1.0 - Depth / 150000.0);
+// Distances in cm (PixelDepth). The scans at their own size out to 80 m; the aerial scans out to 6 km; patches from
+// the aerial grass at 128 m and 512 m out to 30 km; beyond, the world's own colour.
+float near = saturate(1.0 - Depth / 8000.0);
 near *= near;
+float mid = saturate(1.0 - Depth / 600000.0);
+float far = saturate(1.0 - Depth / 3000000.0);
 float3 lumw = float3(0.2126, 0.7152, 0.0722);
-// Texture2DSample, not .Sample: ray-traced lighting runs this too, where only explicit mip levels are allowed.
-#define TRI(T, s) (Texture2DSample(T, T##Sampler, P.yz / (s)).rgb * bw.x + Texture2DSample(T, T##Sampler, P.xz / (s)).rgb * bw.y + Texture2DSample(T, T##Sampler, P.xy / (s)).rgb * bw.z)
-// Broad mottling, seen from the ship and the air (a 256 m and a 1,024 m pattern), gone by orbit.
-float mott = 0.6 * dot(TRI(Soil, 256.0), lumw) / SOIL_LUM + 0.4 * dot(TRI(Soil, 1024.0), lumw) / SOIL_LUM;
-mott = lerp(1.0, mott, 0.35 * saturate(1.0 - Depth / 3000000.0));
-// Grass: the colour from the cover's slow tint; from the soil photograph only its light and dark.
-float3 grass = TW.x < 0.0 ? lerp(GRASS_LUSH, GRASS_HEATH, saturate(-TW.x * 1.4)) : lerp(GRASS_LUSH, GRASS_DRY, saturate(TW.x * 1.4));
-float soil = dot(TRI(Soil, 2.0), lumw) * 0.6 / SOIL_LUM + dot(TRI(Soil, 8.0), lumw) * 0.4 / SOIL_LUM;
-float gd = lerp(1.0, pow(max(soil, 0.0), 0.7), near);
-float3 rd = lerp(1.0, (TRI(Rock, 4.0) * 0.6 + TRI(Rock, 16.0) * 0.4) / ROCK_MEAN, near);
-float sd = lerp(1.0, dot(TRI(Sand, 3.0) / SAND_MEAN, lumw), near);
 float wet = saturate(TW.y);
+// Every scan read through the shared world sampler (12 textures would pass the 16-sampler limit), and through
+// Texture2DSample, never .Sample: ray-traced lighting runs this too.
+#define SX(T, s) Texture2DSample(T, View.MaterialTextureBilinearWrapedSampler, float2(P.z, P.y) / (s))
+#define SY(T, s) Texture2DSample(T, View.MaterialTextureBilinearWrapedSampler, float2(P.x, P.z) / (s))
+#define SZ(T, s) Texture2DSample(T, View.MaterialTextureBilinearWrapedSampler, float2(P.x, P.y) / (s))
+// The same at a fixed mip level (a blurred copy), and turned a quarter (x and y swapped) so its repeats fall
+// across the others'.
+#define BLUR(T, s, m) (Texture2DSampleLevel(T, View.MaterialTextureBilinearWrapedSampler, float2(P.z, P.y) / (s), m).rgb * bw.x     + Texture2DSampleLevel(T, View.MaterialTextureBilinearWrapedSampler, float2(P.x, P.z) / (s), m).rgb * bw.y     + Texture2DSampleLevel(T, View.MaterialTextureBilinearWrapedSampler, float2(P.x, P.y) / (s), m).rgb * bw.z)
+#define TURNED(T, s, m) (Texture2DSampleLevel(T, View.MaterialTextureBilinearWrapedSampler, float2(P.y, P.z) / (s), m).rgb * bw.x     + Texture2DSampleLevel(T, View.MaterialTextureBilinearWrapedSampler, float2(P.z, P.x) / (s), m).rgb * bw.y     + Texture2DSampleLevel(T, View.MaterialTextureBilinearWrapedSampler, float2(P.y, P.x) / (s), m).rgb * bw.z)
+// One layer, projected from three sides: colour and height from A; from B its normal in the world (whiteout
+// blend, Ben Golus), roughness and occlusion. The planes' axes are the world's, so the normal maps need no flips.
+#define LAYER(TA, TB, s, colour, height, normal, rough, ao) { \
+    float4 ax = SX(TA, s), ay = SY(TA, s), az = SZ(TA, s); \
+    float4 bx = SX(TB, s), by = SY(TB, s), bz = SZ(TB, s); \
+    float4 a = ax * bw.x + ay * bw.y + az * bw.z; \
+    colour = a.rgb; height = a.a; \
+    float3 tx = float3(bx.xy * 2.0 - 1.0, 0.0); tx.z = sqrt(saturate(1.0 - dot(tx.xy, tx.xy))); \
+    float3 ty = float3(by.xy * 2.0 - 1.0, 0.0); ty.z = sqrt(saturate(1.0 - dot(ty.xy, ty.xy))); \
+    float3 tz = float3(bz.xy * 2.0 - 1.0, 0.0); tz.z = sqrt(saturate(1.0 - dot(tz.xy, tz.xy))); \
+    tx = float3(tx.xy + n.zy, abs(tx.z) * n.x); \
+    ty = float3(ty.xy + n.xz, abs(ty.z) * n.y); \
+    tz = float3(tz.xy + n.xy, abs(tz.z) * n.z); \
+    normal = normalize(tx.zyx * bw.x + ty.xzy * bw.y + tz.xyz * bw.z); \
+    rough = bx.z * bw.x + by.z * bw.y + bz.z * bw.z; \
+    ao = bx.w * bw.x + by.w * bw.y + bz.w * bw.z; }
+// The scans are read through a slow warp, from the aerial grass blurred to 32 m cells at 128 m (once turned, once
+// not), so their repeats fall on wavy lines instead of a grid (from the ship the 16 m repeat showed as a grid of
+// dots, 9 Nov). Blurred that far the scan varies by only about 10% (measured), hence the large gains: about 8 m
+// for the aerial scans, about 1 m for the near ones. (14 m from a copy blurred to 4-8 m bent so sharply that the
+// near scans smeared into streaks at your feet; 2 m left the grid as it was.)
+float L0 = dot(GRASSMID_MEAN, lumw);
+float wx = dot(TURNED(GrassMidA, 128.0, 10.0), lumw) / L0 - 1.0;
+float wy = dot(BLUR(GrassMidA, 128.0, 10.0), lumw) / L0 - 1.0;
+float3 P0 = P;
+float3 offs = float3(wx, wy, -wx);
+P = P0 + offs * 10.0;
+float3 gc, rc, sc, bc, gmc, rmc, gn, rn, sn, bn, gmn, rmn;
+float gh, rh, sh, bh, gmh, rmh, gr, rr, sr, br, gmr, rmr, ga, ra, sa, ba, gma, rma;
+LAYER(GrassA, GrassB, GRASS_S, gc, gh, gn, gr, ga)
+LAYER(RockA, RockB, ROCK_S, rc, rh, rn, rr, ra)
+LAYER(SandA, SandB, SAND_S, sc, sh, sn, sr, sa)
+LAYER(BedA, BedB, BED_S, bc, bh, bn, br, ba)
+P = P0 + offs * 80.0;
+LAYER(GrassMidA, GrassMidB, GRASSMID_S, gmc, gmh, gmn, gmr, gma)
+LAYER(RockMidA, RockMidB, ROCKMID_S, rmc, rmh, rmn, rmr, rma)
+// their blurred copies, read through the same warp (read unwarped, they put the 16 m grid straight back: 9 Nov)
+float3 gml = BLUR(GrassMidA, GRASSMID_S, 9.0);
+float3 rml = BLUR(RockMidA, ROCKMID_S, 9.0);
+P = P0;
+
+// Ragged edges between layers within 300 m: each scan's height pushes its layer out where it stands tall.
+float4 hgt = float4(lerp(gmh, gh, near), lerp(rmh, rh, near), sh, bh);
+float4 Wh = W + hgt * 0.5;
+float top = max(max(Wh.x, Wh.y), max(Wh.z, Wh.w)) - 0.3;
+float4 Wb = max(Wh - top, 0.0);
+Wb /= max(1e-4, Wb.x + Wb.y + Wb.z + Wb.w);
+W = lerp(W, Wb, saturate(1.0 - Depth / 30000.0));
+
+// A scan adds its own light and dark and part of its hue (chroma), around the world's colour for that cover.
+#define RATIO(c, mean, chroma) clamp(lerp(float3(1.0, 1.0, 1.0) * (dot(c, lumw) / dot(mean, lumw)), (c) / (mean), chroma), 0.25, 3.0)
+float3 grass = TW.x < 0.0 ? lerp(GRASS_LUSH, GRASS_HEATH, saturate(-TW.x * 1.4)) : lerp(GRASS_LUSH, GRASS_DRY, saturate(TW.x * 1.4));
+float midNear = 0.6 * mid * (1.0 - 0.6 * near);  // (at full strength the aerial scans' repeat still showed faintly)
+// The aerial scans only add detail finer than about 2 m (each divided by its own copy blurred to 2 m): their big
+// patches of moss and gravel showed the 16 m repeat as a grid from the ship (9 Nov). Patches of 10-100 m come from
+// the aerial grass at 128 m, turned, blurred to 8 m.
+// Light and dark only: the grass scans average yellow-brown, so their grey stones divided out as blue and read as
+// lilac patches against the teal (9 Nov). Haven's hue comes from the cover's tint.
+grass *= lerp(1.0, RATIO(gc, GRASS_MEAN, 0.0), near) * lerp(1.0, RATIO(gmc, gml, 0.0), midNear);
+// (blurred to 32 m and at 0.35: blurred to 8 m and at 0.6 they showed the 128 m repeat as a checker from the ship)
+float3 patches = TURNED(GrassMidA, 128.0, 10.0);
+grass *= lerp(1.0, RATIO(patches, GRASSMID_MEAN, 0.0), 0.35 * far);
+float3 rock = ROCK_COL * lerp(1.0, RATIO(rc, ROCK_MEAN, 0.5), near) * lerp(1.0, RATIO(rmc, rml, 0.6), midNear);
 // Wet sand is about half as bright as dry (under the clear shallows it glowed neon, 9 Nov).
-float3 c = W.x * grass * gd + W.y * ROCK_COL * rd + W.z * SAND_COL * sd * (1.0 - 0.6 * wet) + W.w * BED_COL * gd;
-Rough = dot(W, float4(0.92, 0.78, 0.86, 0.6)) - 0.2 * wet;
+float3 sand = SAND_COL * lerp(1.0, RATIO(sc, SAND_MEAN, 0.4), near) * (1.0 - 0.6 * wet);
+float3 bed = BED_COL * lerp(1.0, RATIO(bc, BED_MEAN, 0.0), near);
+float3 broadc = SX(GrassMidA, 512.0).rgb * bw.x + SY(GrassMidA, 512.0).rgb * bw.y + SZ(GrassMidA, 512.0).rgb * bw.z;
+float broad = lerp(1.0, dot(broadc, lumw) / dot(GRASSMID_MEAN, lumw), 0.2 * far);
+float occ = lerp(1.0, W.x * ga + W.y * ra + W.z * sa + W.w * ba, 0.6 * near);
+float3 c = (W.x * grass + W.y * rock + W.z * sand + W.w * bed) * broad * occ;
+
+Rough = lerp(dot(W, float4(0.92, 0.8, 0.86, 0.65)), dot(W, float4(gr, rr, sr, br)), near) - 0.25 * wet;
 // Grass is a canopy that drinks light: little specular, or it mirrors the warm horizon and goes olive far off.
 Spec = dot(W, float4(0.2, 0.45, 0.4, 0.5));
-return c * mott;
+// The scans' relief: the near layers out to 150 m, the aerial ones out to 6 km.
+float3 dn = W.x * (gn - n) + W.y * (rn - n) + W.z * (sn - n) + W.w * (bn - n);
+float3 dm = W.x * (gmn - n) + W.y * (rmn - n);
+NormalWS = normalize(n + dn * near + dm * (mid * (1.0 - near) * 0.3));  // (0.7 lit the aerial repeat as a faint weave from 600 m)
+return c;
 """
 
 SEA_HLSL = """
@@ -165,28 +255,32 @@ return normalize(n - g * fade);
 """
 
 
-def ground_material(tex, means):
+def ground_material(scans, info):
     folder = DEST + "/Materials"
     mat = fresh(unreal.Material, "M_PlanetGround", unreal.MaterialFactoryNew(), folder)
-    lum = lambda c: 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]  # noqa: E731
+    mat.set_editor_property("tangent_space_normal", False)  # the shader gives the normal in the world
     code = GROUND_HLSL
-    for k, v in {
-        "SOIL_LUM": f"{lum(means['T_Soil']):.5f}",
-        "ROCK_MEAN": f3(means["T_Rock"]),
-        "SAND_MEAN": f3(means["T_Sand"]),
+    values = {
         "GRASS_HEATH": f3(GRASS_HEATH), "GRASS_LUSH": f3(GRASS_LUSH), "GRASS_DRY": f3(GRASS_DRY),
         "ROCK_COL": f3(ROCK), "SAND_COL": f3(SAND), "BED_COL": f3(BED),
-    }.items():
-        code = code.replace(k, v)
-    pins = ["UV0", "UV1", "Nrm", "Wrgb", "Wa", "TW", "Depth", "Rock", "Soil", "Sand"]
+    }
+    for layer, (scan, size) in LAYERS.items():
+        key = layer.upper()
+        values[key + "_MEAN"] = f3(info[scan]["mean"])
+        values[key + "_S"] = f"{size:.1f}"
+    for k in sorted(values, key=len, reverse=True):  # longest first: GRASSMID_MEAN before GRASS_MEAN
+        code = code.replace(k, values[k])
+    pins = ["UV0", "UV1", "Nrm", "Wrgb", "Wa", "TW", "Depth"]
+    for layer in LAYERS:
+        pins += [layer + "A", layer + "B"]
     c = custom(mat, -500, 0, "Ground", code, pins, unreal.CustomMaterialOutputType.CMOT_FLOAT3,
-               [("Rough", unreal.CustomMaterialOutputType.CMOT_FLOAT1), ("Spec", unreal.CustomMaterialOutputType.CMOT_FLOAT1)])
-    uv = [node(mat, unreal.MaterialExpressionTextureCoordinate, -1100, -300 + 90 * i, coordinate_index=i) for i in range(3)]
-    vc = node(mat, unreal.MaterialExpressionVertexColor, -1100, 0)
-    nrm = node(mat, unreal.MaterialExpressionVertexNormalWS, -1100, 150)
-    depth = node(mat, unreal.MaterialExpressionPixelDepth, -1100, 230)
-    objs = {k: node(mat, unreal.MaterialExpressionTextureObject, -1100, 320 + 110 * i, texture=tex[t])
-            for i, (k, t) in enumerate((("Rock", "T_Rock"), ("Soil", "T_Soil"), ("Sand", "T_Sand")))}
+               [("Rough", unreal.CustomMaterialOutputType.CMOT_FLOAT1),
+                ("Spec", unreal.CustomMaterialOutputType.CMOT_FLOAT1),
+                ("NormalWS", unreal.CustomMaterialOutputType.CMOT_FLOAT3)])
+    uv = [node(mat, unreal.MaterialExpressionTextureCoordinate, -1300, -300 + 90 * i, coordinate_index=i) for i in range(3)]
+    vc = node(mat, unreal.MaterialExpressionVertexColor, -1300, 0)
+    nrm = node(mat, unreal.MaterialExpressionVertexNormalWS, -1300, 150)
+    depth = node(mat, unreal.MaterialExpressionPixelDepth, -1300, 230)
     mel.connect_material_expressions(uv[0], "", c, "UV0")
     mel.connect_material_expressions(uv[1], "", c, "UV1")
     mel.connect_material_expressions(uv[2], "", c, "TW")
@@ -194,11 +288,18 @@ def ground_material(tex, means):
     mel.connect_material_expressions(vc, "A", c, "Wa")
     mel.connect_material_expressions(nrm, "", c, "Nrm")
     mel.connect_material_expressions(depth, "", c, "Depth")
-    for k, o in objs.items():
-        mel.connect_material_expressions(o, "", c, k)
+    y = 320
+    for layer, (scan, _) in LAYERS.items():
+        for part in ("A", "B"):
+            o = node(mat, unreal.MaterialExpressionTextureObject, -1300, y, texture=scans[(scan, part)])
+            o.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_COLOR if part == "A"
+                                  else unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
+            mel.connect_material_expressions(o, "", c, layer + part)
+            y += 110
     mel.connect_material_property(c, "", unreal.MaterialProperty.MP_BASE_COLOR)
     mel.connect_material_property(c, "Rough", unreal.MaterialProperty.MP_ROUGHNESS)
     mel.connect_material_property(c, "Spec", unreal.MaterialProperty.MP_SPECULAR)
+    mel.connect_material_property(c, "NormalWS", unreal.MaterialProperty.MP_NORMAL)
     mel.recompile_material(mat)
     assets.save_loaded_asset(mat)
     return mat
@@ -351,10 +452,14 @@ def build_level(ground, sea, far_sea):
 def main():
     shots.start()
     try:
-        with open(os.path.join(RAW, "textures.json")) as f:
-            means = json.load(f)["means"]
-        tex = {n: import_texture(n, n.endswith("_N")) for n in ("T_Rock", "T_Rock_N", "T_Soil", "T_Soil_N", "T_Sand", "T_Sand_N")}
-        ground = ground_material(tex, means)
+        with open(os.path.join(SCANS, "scans.json"), encoding="utf-8") as f:
+            info = json.load(f)
+        # The first ground photographs (ambientCG, 1K) are replaced by the scans.
+        for old in ("T_Rock", "T_Rock_N", "T_Soil", "T_Soil_N", "T_Sand", "T_Sand_N"):
+            if assets.does_asset_exist(f"{DEST}/Textures/{old}"):
+                assets.delete_asset(f"{DEST}/Textures/{old}")
+        scans = {(scan, part): import_scan(scan, part) for scan, _ in LAYERS.values() for part in ("A", "B")}
+        ground = ground_material(scans, info)
         sea = sea_material()
         build_level(ground, sea, far_sea_material())
         shots.finish(True)

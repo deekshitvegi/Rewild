@@ -72,7 +72,10 @@ namespace
 		const double R = Shape.Radius;
 		const double Size = R * UE_DOUBLE_HALF_PI * Scale;
 		const double Spacing = Size / TileN;
-		const double MinWave = Spacing * 2.0;  // anything shorter would alias between the points
+		// The shortest bumps drawn: six point spacings. At two (the most a grid can hold) the finest bumps lined up
+		// with the grid and its triangles showed as a lattice in the light from the ship (9 Nov); the scans' normal
+		// maps carry the relief finer than this.
+		const double MinWave = Spacing * 6.0;
 
 		// Heights on the grid with a border of one point all round (for normals that match the neighbours').
 		constexpr int32 G = TileN + 3;
@@ -347,6 +350,10 @@ void ARewildPlanet::SetupSky()
 	SetVar(TEXT("r.SkyAtmosphere.AerialPerspectiveLUT.Depth"), 2000.f);
 	SetVar(TEXT("r.SkyAtmosphere.AerialPerspectiveLUT.DepthResolution"), 64.f);
 	SetVar(TEXT("r.SkyAtmosphere.AerialPerspectiveLUT.SampleCountMaxPerSlice"), 4.f);
+	// The ground's flat triangles under a low light shadowed themselves one facet at a time: a lattice at the tiles'
+	// point spacing showed across the grass from the ship (9 Nov; it went with shadows off and with this bias at 3,
+	// the default being 0.5).
+	SetVar(TEXT("r.Shadow.Virtual.NormalBias"), 3.f);
 	if (World == TEXT("Haven"))
 	{
 		// Round 5 (9 Nov) measured the sky 1.5-2 stops too bright for the ground against the key art (zenith 28, 43,
@@ -617,6 +624,9 @@ void ARewildPlanet::SetShown(FTile& T, bool bShow)
 	{
 		T.bShown = bShow;
 		Meshes[T.Mesh]->SetVisibility(bShow);
+		// A hidden tile must leave ray tracing too: its finer children lie a hair above or below it, and Lumen's
+		// rays from them hit it, drawing its triangles as a lattice on the grass (after flying down from orbit, 9 Nov).
+		Meshes[T.Mesh]->SetVisibleInRayTracing(bShow);
 	}
 }
 
@@ -678,6 +688,7 @@ int32 ARewildPlanet::AcquireMesh()
 	Mesh->SetCastShadow(true);
 	Mesh->bAffectDistanceFieldLighting = false;
 	Mesh->SetVisibility(false);
+	Mesh->SetVisibleInRayTracing(false);
 	Mesh->RegisterComponent();
 	return Meshes.Add(Mesh);
 }
@@ -687,6 +698,7 @@ void ARewildPlanet::ReleaseMesh(int32 Index)
 	UProceduralMeshComponent* Mesh = Meshes[Index];
 	Mesh->ClearAllMeshSections();
 	Mesh->SetVisibility(false);
+	Mesh->SetVisibleInRayTracing(false);
 	FreeMeshes.Add(Index);
 }
 

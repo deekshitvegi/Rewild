@@ -92,3 +92,16 @@ people.
 
   Next, step 4 in order: TON 618 drawn in the sky; scanned ground (needs the owner's yes to download); erosion and
   the colony's ground pressed in (bay, tarn, falls); real grass, trees and rocks; clouds; then the places.
+- 9 Nov, evening: **scanned ground**. The owner said yes to the download: seven Poly Haven scans (CC0, 330 MB, 4K;
+  docs/CREDITS.md), fetched by `Scripts/haven/fetch_scans.py`, packed two pictures to a set by `prepare_haven.py`
+  (colour and height; normal, roughness and occlusion), imported by `build_haven.py` into /Game/Generated/Haven/Scans
+  (not in git: run the three scripts on a new PC). The ground now has four covers, each a scan at its own size
+  (grass and silt 2 m, rock and sand 4 m) to 80 m, and aerial scans of grass (16 m) and rock (64 m) out to 6 km, with
+  the scans' relief (normal maps from three sides), ragged edges between covers from each scan's height, and the
+  world's colour kept: the grass scans give only light and dark. Checklist line 2 now **yes** for the ground itself
+  (2,048 px a metre at your feet; no repeat seen from the ship: their reads go through a slow warp of 1-8 m); grass
+  blades, plants and stones still to come. Stills: docs/images/haven-ground-at-your-feet.jpg, haven-on-foot.jpg,
+  haven-ship-300m.jpg, haven-low-over-the-bay.jpg.
+  Cost: 10.4 ms a frame on average down from orbit (8-9 ms before), worst two seconds 12.6 ms: 1080p, RTX 3070.
+  Fixed on the way: a lattice of the ground's triangles in the low light (the shadows' normal bias raised to 3 on
+  planets) and the ground's finest bumps (now no finer than six point spacings).
