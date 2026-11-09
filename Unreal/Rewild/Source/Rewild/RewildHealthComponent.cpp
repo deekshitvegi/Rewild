@@ -1,8 +1,38 @@
 #include "RewildHealthComponent.h"
 
+TArray<TWeakObjectPtr<URewildHealthComponent>> URewildHealthComponent::Registry;
+
 URewildHealthComponent::URewildHealthComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
+}
+
+void URewildHealthComponent::BeginPlay()
+{
+	Super::BeginPlay();
+	Registry.Add(this);
+}
+
+void URewildHealthComponent::EndPlay(const EEndPlayReason::Type Reason)
+{
+	Registry.RemoveAll([this](const TWeakObjectPtr<URewildHealthComponent>& P) { return !P.IsValid() || P.Get() == this; });
+	Super::EndPlay(Reason);
+}
+
+void URewildHealthComponent::ForEach(const UWorld* World, TFunctionRef<void(URewildHealthComponent*)> Visit)
+{
+	for (int32 I = Registry.Num() - 1; I >= 0; --I)
+	{
+		URewildHealthComponent* H = Registry[I].Get();
+		if (!H)
+		{
+			Registry.RemoveAtSwap(I);
+		}
+		else if (H->GetWorld() == World && H->GetOwner())
+		{
+			Visit(H);
+		}
+	}
 }
 
 void URewildHealthComponent::Restore()

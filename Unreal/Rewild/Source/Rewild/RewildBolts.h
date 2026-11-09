@@ -8,7 +8,12 @@
 class UInstancedStaticMeshComponent;
 
 /** Who fired a bolt, which decides its colour and whom it can hurt. */
-enum class ERewildBoltKind : uint8 { Cannon, Training };
+enum class ERewildBoltKind : uint8
+{
+	Cannon,    // the player's twin cannons: warm white-orange tracers
+	Training,  // the practice drones: pale blue, weak
+	Slag,      // the Harrow's Reapers: short molten slugs, deep red-orange (ore, fired hot)
+};
 
 /** Draws every bolt in flight as instances of one stretched cylinder (one draw per kind). */
 UCLASS(NotPlaceable)
@@ -21,6 +26,7 @@ public:
 
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UInstancedStaticMeshComponent> Cannon;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UInstancedStaticMeshComponent> Training;
+	UPROPERTY(VisibleAnywhere) TObjectPtr<UInstancedStaticMeshComponent> Slag;
 };
 
 /**
@@ -63,6 +69,7 @@ private:
 	TWeakObjectPtr<ARewildBoltRenderer> Renderer;
 	int32 DrawnCannon = 0;
 	int32 DrawnTraining = 0;
+	int32 DrawnSlag = 0;
 
 	void Draw();
 };

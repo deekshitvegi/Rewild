@@ -26,11 +26,16 @@ class UStaticMeshComponent;
  * where to aim at the target nearest the nose). The guns heat up; a shield takes hits first and recharges, then the
  * hull. Destroyed, the fighter blows apart and returns to the start.
  *
- * Keyboard and mouse: mouse steers, left button fires, W/S throttle, A/D roll, Shift boost, C chase or cockpit
- * camera, Esc quit. Gamepad: left stick steers, right trigger fires, right stick throttle (up/down) and roll
- * (left/right), A boost, right stick press camera.
+ * Missiles (milestone 4): hold the nose on a target and the HUD's lock ring closes in 1.2 s; a missile fired when
+ * locked homes on it, otherwise it flies straight. Six missiles, one back every 15 s. Flares throw hot decoys out
+ * beside the ship, four at a time, to pull a Harrow missile away; twelve, one back every 6 s.
  *
- * -RewildDemo on the command line flies an autopilot run against the training drones, takes screenshots and quits.
+ * Keyboard and mouse: mouse steers, left button fires the guns, right button a missile, F flares, W/S throttle,
+ * A/D roll, Shift boost, C chase or cockpit camera, Esc quit. Gamepad: left stick steers, right trigger guns, left
+ * trigger missile, B flares, right stick throttle (up/down) and roll (left/right), A boost, right stick press camera.
+ *
+ * -RewildDemo on the command line flies an autopilot run against the Harrow's Reapers (guns, missiles, flares),
+ * takes screenshots and quits.
  */
 UCLASS()
 class REWILD_API ARewildFighter : public APawn
@@ -60,6 +65,12 @@ public:
 	bool GetLeadPoint(FVector& Out) const { Out = LeadPoint; return bHasLead; }
 	/** Seconds left of the hit marker (a bolt of ours just hit). */
 	float GetHitMarker() const { return HitMarker; }
+	/** Missile lock on the current target, 0..1 (1 locked). */
+	float GetLockProgress() const { return LockProgress; }
+	int32 GetMissiles() const { return Missiles; }
+	int32 GetMaxMissiles() const { return MissileCapacity; }
+	int32 GetFlares() const { return Flares; }
+	int32 GetMaxFlares() const { return FlareCapacity; }
 
 protected:
 	virtual void BeginPlay() override;
@@ -87,6 +98,16 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Guns") float GunCoolRate = 0.4f;
 	UPROPERTY(EditAnywhere, Category = "Guns") float Convergence = 700.f;      // m: the two streams cross here
 
+	// Missiles and flares.
+	UPROPERTY(EditAnywhere, Category = "Missiles") int32 MissileCapacity = 6;
+	UPROPERTY(EditAnywhere, Category = "Missiles") float MissileReload = 15.f;  // seconds for one more
+	UPROPERTY(EditAnywhere, Category = "Missiles") float LockTime = 1.2f;       // seconds of nose on target to lock
+	UPROPERTY(EditAnywhere, Category = "Missiles") float LockCone = 12.f;       // degrees
+	UPROPERTY(EditAnywhere, Category = "Missiles") float LockRange = 2500.f;    // m
+	UPROPERTY(EditAnywhere, Category = "Missiles") int32 FlareCapacity = 12;
+	UPROPERTY(EditAnywhere, Category = "Missiles") int32 FlareSalvo = 4;
+	UPROPERTY(EditAnywhere, Category = "Missiles") float FlareReload = 6.f;     // seconds for one more
+
 private:
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> Hull;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> Canopy;
@@ -104,6 +125,8 @@ private:
 	UPROPERTY() TObjectPtr<UInputAction> ThrottleAction;
 	UPROPERTY() TObjectPtr<UInputAction> BoostAction;
 	UPROPERTY() TObjectPtr<UInputAction> FireAction;
+	UPROPERTY() TObjectPtr<UInputAction> MissileAction;
+	UPROPERTY() TObjectPtr<UInputAction> FlareAction;
 	UPROPERTY() TObjectPtr<UInputAction> CameraAction;
 	UPROPERTY() TObjectPtr<UInputAction> QuitAction;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> EngineGlow;
@@ -121,12 +144,18 @@ private:
 	void OnBoostReleased(const FInputActionValue& Value);
 	void OnFire(const FInputActionValue& Value);
 	void OnFireReleased(const FInputActionValue& Value);
+	void OnMissile(const FInputActionValue& Value);
+	void OnFlares(const FInputActionValue& Value);
 	void OnCamera(const FInputActionValue& Value);
 	void OnQuit(const FInputActionValue& Value);
 
 	void SetCockpitView(bool bCockpit);
 	void Fly(float DeltaSeconds);
 	void TickGuns(float DeltaSeconds);
+	void TickMissiles(float DeltaSeconds);
+	void FireMissile();
+	void DropFlares();
+	void HandleMissileHit(AActor* Shooter, AActor* Victim);
 	void FindTarget();
 	void UpdateDust();
 	void HandleHit(const FVector& Point, bool bOnShield);
@@ -134,7 +163,8 @@ private:
 	void HandleBoltHit(AActor* Shooter, AActor* Victim);
 	void Respawn();
 	void TickDemo(float DeltaSeconds);
-	void Shoot(const TCHAR* Why);
+	void Shoot(const FString& Why);
+	void QueueShot(float After, const FString& Why);
 
 	FVector Velocity = FVector::ZeroVector;  // cm/s, world
 	FVector2D AimCursor = FVector2D::ZeroVector;
@@ -154,10 +184,21 @@ private:
 	bool bRightGunNext = false;
 
 	TWeakObjectPtr<AActor> Target;
+	TWeakObjectPtr<AActor> LockTarget;
+	float LockProgress = 0.f;
+	int32 Missiles = 6;
+	float MissileRecharge = 0.f;
+	float MissileCooldown = 0.f;
+	bool bRightMissileNext = false;
+	int32 Flares = 16;
+	float FlareRecharge = 0.f;
+	float FlareCooldown = 0.f;
 	FVector LeadPoint = FVector::ZeroVector;
 	bool bHasLead = false;
 	float HitMarker = 0.f;
 	float ShieldFlash = 0.f;
+	FVector ShieldHitLocal = FVector::ZeroVector;  // where the shield was last hit, in the ship's frame
+	bool bDemoSawShield = false;
 
 	bool bDead = false;
 	float RespawnIn = 0.f;
@@ -170,5 +211,14 @@ private:
 	int32 DemoShots = 0;
 	int32 DemoKills = 0;
 	bool bDemoTargetAlive = false;
-	TArray<float> DemoShotAt;  // times to take a screenshot
+	TWeakObjectPtr<AActor> DemoEngaged;
+	float DemoBreak = 0.f;           // seconds left of a hard break away from a missile
+	float DemoMissileGap = 0.f;
+	int32 DemoMissilesFired = 0;
+	int32 DemoFlareSalvos = 0;
+	bool bDemoSawClose = false;
+	bool bDemoSawLock = false;
+	int32 DemoHitsTaken = 0;
+	int32 DemoDeaths = 0;
+	TArray<TPair<float, FString>> DemoQueue;  // screenshots to take: when, and why
 };

@@ -20,6 +20,8 @@
 #include "RewildDrone.h"
 #include "RewildExplosion.h"
 #include "RewildHealthComponent.h"
+#include "RewildMissiles.h"
+#include "RewildReaper.h"
 #include "UObject/ConstructorHelpers.h"
 
 namespace
@@ -133,6 +135,8 @@ ARewildFighter::ARewildFighter()
 	Health = CreateDefaultSubobject<URewildHealthComponent>(TEXT("Health"));
 	Health->ShieldMax = 100.f;
 	Health->HullMax = 100.f;
+	Health->ShieldRegenDelay = 4.f;  // a hard game: the shield waits longer and refills slower (owner, 9 Nov 2026)
+	Health->ShieldRegenRate = 20.f;
 	Health->Team = 0;
 
 	AutoPossessPlayer = EAutoReceiveInput::Player0;
@@ -173,6 +177,12 @@ void ARewildFighter::BeginPlay()
 	{
 		Bolts->OnBoltHit.AddUObject(this, &ARewildFighter::HandleBoltHit);
 	}
+	if (URewildMissiles* Ms = GetWorld()->GetSubsystem<URewildMissiles>())
+	{
+		Ms->OnMissileHit.AddUObject(this, &ARewildFighter::HandleMissileHit);
+	}
+	Missiles = MissileCapacity;
+	Flares = FlareCapacity;
 
 	BuildInput();
 	if (const APlayerController* PC = Cast<APlayerController>(GetController()))
@@ -185,10 +195,6 @@ void ARewildFighter::BeginPlay()
 
 	Velocity = GetActorForwardVector() * CruiseSpeedMax * Throttle * 100.f;
 	bDemo = FParse::Param(FCommandLine::Get(), TEXT("RewildDemo"));
-	if (bDemo)
-	{
-		DemoShotAt = {7.f, 16.f};  // a chase shot in the first attack, a cockpit shot later; kills add their own
-	}
 }
 
 void ARewildFighter::BuildInput()
@@ -235,6 +241,14 @@ void ARewildFighter::BuildInput()
 	Mapping->MapKey(FireAction, EKeys::LeftMouseButton);
 	Mapping->MapKey(FireAction, EKeys::Gamepad_RightTrigger);
 
+	MissileAction = Action(TEXT("Missile"), EInputActionValueType::Boolean);
+	Mapping->MapKey(MissileAction, EKeys::RightMouseButton);
+	Mapping->MapKey(MissileAction, EKeys::Gamepad_LeftTrigger);
+
+	FlareAction = Action(TEXT("Flares"), EInputActionValueType::Boolean);
+	Mapping->MapKey(FlareAction, EKeys::F);
+	Mapping->MapKey(FlareAction, EKeys::Gamepad_FaceButton_Right);
+
 	CameraAction = Action(TEXT("Camera"), EInputActionValueType::Boolean);
 	Mapping->MapKey(CameraAction, EKeys::C);
 	Mapping->MapKey(CameraAction, EKeys::Gamepad_RightThumbstick);
@@ -263,6 +277,8 @@ void ARewildFighter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 	Input->BindAction(BoostAction, ETriggerEvent::Completed, this, &ARewildFighter::OnBoostReleased);
 	Input->BindAction(FireAction, ETriggerEvent::Started, this, &ARewildFighter::OnFire);
 	Input->BindAction(FireAction, ETriggerEvent::Completed, this, &ARewildFighter::OnFireReleased);
+	Input->BindAction(MissileAction, ETriggerEvent::Started, this, &ARewildFighter::OnMissile);
+	Input->BindAction(FlareAction, ETriggerEvent::Started, this, &ARewildFighter::OnFlares);
 	Input->BindAction(CameraAction, ETriggerEvent::Started, this, &ARewildFighter::OnCamera);
 	Input->BindAction(QuitAction, ETriggerEvent::Started, this, &ARewildFighter::OnQuit);
 }
@@ -287,6 +303,8 @@ void ARewildFighter::OnBoostReleased(const FInputActionValue&) { bBoostHeld = fa
 void ARewildFighter::OnFire(const FInputActionValue&) { bFireHeld = true; }
 void ARewildFighter::OnFireReleased(const FInputActionValue&) { bFireHeld = false; }
 void ARewildFighter::OnCamera(const FInputActionValue&) { SetCockpitView(!bCockpitView); }
+void ARewildFighter::OnMissile(const FInputActionValue&) { FireMissile(); }
+void ARewildFighter::OnFlares(const FInputActionValue&) { DropFlares(); }
 
 void ARewildFighter::OnQuit(const FInputActionValue&)
 {
@@ -326,6 +344,7 @@ void ARewildFighter::Tick(float DeltaSeconds)
 	}
 	Fly(Dt);
 	TickGuns(Dt);
+	TickMissiles(Dt);
 	UpdateDust();
 
 	ShieldFlash = FMath::Max(0.f, ShieldFlash - Dt * 3.f);
@@ -333,6 +352,7 @@ void ARewildFighter::Tick(float DeltaSeconds)
 	if (ShieldMaterial)
 	{
 		ShieldMaterial->SetScalarParameterValue(TEXT("Strength"), ShieldFlash);
+		ShieldMaterial->SetVectorParameterValue(TEXT("HitPoint"), GetActorTransform().TransformPosition(ShieldHitLocal));
 	}
 }
 
@@ -380,26 +400,53 @@ void ARewildFighter::FindTarget()
 {
 	const FVector Here = GetActorLocation();
 	const FVector Nose = GetActorForwardVector();
-	AActor* Best = nullptr;
-	float BestAngle = TargetCone;
-	for (TActorIterator<ARewildDrone> It(GetWorld()); It; ++It)
+	auto AngleTo = [&](const AActor* A)
 	{
-		if (!It->IsAlive())
+		const FVector To = (A->GetActorLocation() - Here).GetSafeNormal();
+		return FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(FVector::DotProduct(Nose, To), -1.f, 1.f)));
+	};
+	auto Alive = [](const AActor* A)
+	{
+		const URewildHealthComponent* H = A ? A->FindComponentByClass<URewildHealthComponent>() : nullptr;
+		return H && !H->IsDead();
+	};
+	// The demo goes for the Reapers once they come: the drones are practice.
+	bool bReapersOnly = false;
+	if (bDemo)
+	{
+		for (TActorIterator<ARewildReaper> It(GetWorld()); It; ++It)
 		{
-			continue;
+			bReapersOnly |= It->IsAlive();
 		}
-		const FVector To = It->GetActorLocation() - Here;
-		const float Distance = To.Size();
-		if (Distance > TargetRange)
+	}
+
+	AActor* Best = nullptr;
+	AActor* Held = LockTarget.Get();
+	if (Held && LockProgress > 0.3f && Alive(Held) && AngleTo(Held) < 30.f && FVector::Dist(Held->GetActorLocation(), Here) < TargetRange)
+	{
+		Best = Held;  // hold on to a target being locked while it stays near the nose
+	}
+	else
+	{
+		float BestAngle = TargetCone;
+		URewildHealthComponent::ForEach(GetWorld(), [&](URewildHealthComponent* H)
 		{
-			continue;
-		}
-		const float Angle = FMath::RadiansToDegrees(FMath::Acos(FVector::DotProduct(Nose, To / FMath::Max(Distance, 1.f))));
-		if (Angle < BestAngle)
-		{
-			BestAngle = Angle;
-			Best = *It;
-		}
+			AActor* A = H->GetOwner();
+			if (H->Team == Health->Team || H->IsDead() || A->IsHidden() || (bReapersOnly && !A->IsA<ARewildReaper>()))
+			{
+				return;
+			}
+			if (FVector::Dist(A->GetActorLocation(), Here) > TargetRange)
+			{
+				return;
+			}
+			const float Angle = AngleTo(A);
+			if (Angle < BestAngle)
+			{
+				BestAngle = Angle;
+				Best = A;
+			}
+		});
 	}
 	Target = Best;
 	bHasLead = false;
@@ -447,6 +494,90 @@ void ARewildFighter::TickGuns(float Dt)
 	}
 }
 
+void ARewildFighter::TickMissiles(float Dt)
+{
+	MissileCooldown -= Dt;
+	FlareCooldown -= Dt;
+	if (Missiles < MissileCapacity && (MissileRecharge -= Dt) <= 0.f)
+	{
+		++Missiles;
+		MissileRecharge = MissileReload;
+	}
+	if (Flares < FlareCapacity && (FlareRecharge -= Dt) <= 0.f)
+	{
+		++Flares;
+		FlareRecharge = FlareReload;
+	}
+
+	// The lock builds while the target stays in the nose's cone and in range, and drains when it slips out.
+	AActor* T = Target.Get();
+	if (T != LockTarget.Get())
+	{
+		LockTarget = T;
+		LockProgress = 0.f;
+	}
+	if (!T)
+	{
+		return;
+	}
+	const FVector To = T->GetActorLocation() - GetActorLocation();
+	const float Angle = FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(FVector::DotProduct(GetActorForwardVector(), To.GetSafeNormal()), -1.f, 1.f)));
+	const bool bHolding = Angle < LockCone && To.Size() < LockRange * 100.f && Missiles > 0;
+	LockProgress = bHolding ? FMath::Min(1.f, LockProgress + Dt / LockTime) : FMath::Max(0.f, LockProgress - Dt * 1.5f);
+	if (LockProgress > 0.f)
+	{
+		if (URewildMissiles* Ms = GetWorld()->GetSubsystem<URewildMissiles>())
+		{
+			Ms->ReportLock(this, T, LockProgress);  // the Reapers feel it and may jink
+		}
+	}
+}
+
+void ARewildFighter::FireMissile()
+{
+	URewildMissiles* Ms = GetWorld()->GetSubsystem<URewildMissiles>();
+	if (bDead || !Ms || Missiles <= 0 || MissileCooldown > 0.f)
+	{
+		return;
+	}
+	if (Missiles == MissileCapacity)
+	{
+		MissileRecharge = MissileReload;
+	}
+	--Missiles;
+	MissileCooldown = 0.6f;
+	// From under the wing roots, left and right in turn: it drops clear, then lights.
+	const float Side = bRightMissileNext ? 1.f : -1.f;
+	bRightMissileNext = !bRightMissileNext;
+	const FVector From = GetActorLocation() + GetActorRightVector() * Side * 250.f - GetActorUpVector() * 90.f;
+	Ms->Launch(this, ERewildMissileKind::Rewild, Health->Team, From, GetActorQuat(), Velocity, LockProgress >= 1.f ? LockTarget.Get() : nullptr);
+}
+
+void ARewildFighter::DropFlares()
+{
+	URewildMissiles* Ms = GetWorld()->GetSubsystem<URewildMissiles>();
+	if (bDead || !Ms || Flares <= 0 || FlareCooldown > 0.f)
+	{
+		return;
+	}
+	if (Flares == FlareCapacity)
+	{
+		FlareRecharge = FlareReload;
+	}
+	const int32 N = FMath::Min(FlareSalvo, Flares);
+	Flares -= N;
+	FlareCooldown = 0.8f;
+	Ms->DropFlares(this, Health->Team, GetActorLocation(), GetActorQuat(), Velocity, N);
+}
+
+void ARewildFighter::HandleMissileHit(AActor* Shooter, AActor* Victim)
+{
+	if (Shooter == this && Victim)
+	{
+		HitMarker = 0.35f;
+	}
+}
+
 void ARewildFighter::UpdateDust()
 {
 	const UCameraComponent* Camera = bCockpitView ? CockpitCamera : ChaseCamera;
@@ -469,9 +600,16 @@ void ARewildFighter::UpdateDust()
 
 void ARewildFighter::HandleHit(const FVector& Point, bool bOnShield)
 {
+	++DemoHitsTaken;
 	if (bOnShield)
 	{
 		ShieldFlash = 1.f;
+		ShieldHitLocal = GetActorTransform().InverseTransformPosition(Point);  // the ripple spreads from here
+		if (bDemo && !bDemoSawShield && DemoTime > 10.f)
+		{
+			bDemoSawShield = true;
+			QueueShot(0.06f, TEXT("shield hit"));
+		}
 	}
 }
 
@@ -486,7 +624,9 @@ void ARewildFighter::HandleBoltHit(AActor* Shooter, AActor* Victim)
 void ARewildFighter::HandleDeath()
 {
 	bDead = true;
+	++DemoDeaths;
 	bFireHeld = false;
+	LockProgress = 0.f;
 	RespawnIn = RespawnTime;
 	ARewildExplosion::Spawn(GetWorld(), GetActorLocation(), Velocity, 1.6f);
 	Hull->SetVisibility(false, true);  // the hull and everything on it, cameras excepted
@@ -504,82 +644,149 @@ void ARewildFighter::Respawn()
 	Hull->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	GunHeat = 0.f;
 	bGunsOverheated = false;
+	Missiles = MissileCapacity;
+	Flares = FlareCapacity;
 }
 
-void ARewildFighter::Shoot(const TCHAR* Why)
+void ARewildFighter::Shoot(const FString& Why)
 {
 	if (APlayerController* PC = Cast<APlayerController>(GetController()))
 	{
 		PC->ConsoleCommand(TEXT("Shot"));
-		UE_LOG(LogTemp, Display, TEXT("[rewild demo] shot %d at %.1f s: %s"), DemoShots, DemoTime, Why);
+		UE_LOG(LogTemp, Display, TEXT("[rewild demo] shot %d at %.1f s: %s"), DemoShots, DemoTime, *Why);
 		++DemoShots;
 	}
 }
 
+void ARewildFighter::QueueShot(float After, const FString& Why)
+{
+	DemoQueue.Add({DemoTime + After, Why});
+}
+
 void ARewildFighter::TickDemo(float Dt)
 {
-	// An autopilot against the training range: it turns onto the lead point of the target nearest the nose and
-	// fires when it is within 2.5 degrees and 1.6 km. Screenshots: one in the first attack, one from the cockpit,
-	// and two of each of the first three kills (as the drone blows apart and half a second later).
+	// An autopilot against the Harrow (milestone 4). It turns onto the lead point of the target nearest the nose,
+	// fires the guns when the aim is off by less than the target's size and within 700 m, fires a missile when
+	// locked, and when a Harrow missile closes it throws flares and pulls hard. Screenshots: the Reapers close, the
+	// lock warning, the first two missiles (launch and flight), the first two flare salvos, a cockpit view and the
+	// first three kills (as it blows apart and half a second later).
 	DemoTime += Dt;
-	ThrottleInput = Throttle < 0.45f ? 1.f : (Throttle > 0.5f ? -1.f : 0.f);
+	DemoMissileGap -= Dt;
+	ThrottleInput = Throttle < 0.55f ? 1.f : (Throttle > 0.6f ? -1.f : 0.f);
+	URewildMissiles* Ms = GetWorld()->GetSubsystem<URewildMissiles>();
 
-	ARewildDrone* Drone = Cast<ARewildDrone>(Target.Get());
-	if (Drone)
+	TArray<URewildMissiles::FThreat> Threats;
+	if (Ms)
 	{
-		const FVector Aim = bHasLead ? LeadPoint : Drone->GetActorLocation();
+		Ms->GetThreats(this, Threats);
+		if (!bDemoSawLock && Ms->GetLockOn(this) > 0.6f)
+		{
+			bDemoSawLock = true;
+			QueueShot(0.f, TEXT("lock warning"));
+		}
+	}
+	float Soonest = 99.f;
+	for (const URewildMissiles::FThreat& Th : Threats)
+	{
+		Soonest = FMath::Min(Soonest, Th.Seconds);
+	}
+	if (Soonest < 1.8f && FlareCooldown <= 0.f && Flares > 0)
+	{
+		DropFlares();
+		DemoBreak = 1.4f;
+		if (++DemoFlareSalvos <= 2)
+		{
+			QueueShot(0.5f, TEXT("flares"));
+		}
+	}
+
+	AActor* T = Target.Get();
+	if (DemoBreak > 0.f)
+	{
+		DemoBreak -= Dt;
+		Stick = FVector2D(0.3f, 1.f);  // pull hard across the missile's path
+		RollInput = 0.6f;
+		bFireHeld = false;
+	}
+	else if (T)
+	{
+		RollInput = 0.f;
+		const FVector Aim = bHasLead ? LeadPoint : T->GetActorLocation();
 		const FVector Local = GetActorTransform().InverseTransformVectorNoScale((Aim - GetActorLocation()).GetSafeNormal());
 		const float Yaw = FMath::Atan2(Local.Y, Local.X);
 		const float Pitch = FMath::Atan2(Local.Z, Local.X);
 		Stick = FVector2D(FMath::Clamp(Yaw * 8.f, -1.f, 1.f), FMath::Clamp(Pitch * 8.f, -1.f, 1.f));
 		const float Off = FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(Local.X, -1.f, 1.f)));
 		const float Distance = FVector::Dist(Aim, GetActorLocation());
-		// Fire only when the aim is off by less than the drone's own size (it is 3.5 m across).
-		const float Allowed = FMath::Max(0.2f, FMath::RadiansToDegrees(FMath::Atan(150.f / FMath::Max(Distance, 1.f))));
+		const bool bReaper = T->IsA<ARewildReaper>();
+		// Fire only when the aim is off by less than the target's own size (a drone 3.5 m, a Reaper about 11 m).
+		const float Allowed = FMath::Max(0.2f, FMath::RadiansToDegrees(FMath::Atan((bReaper ? 450.f : 150.f) / FMath::Max(Distance, 1.f))));
 		bFireHeld = Off < Allowed && Distance < 70000.f;  // within 700 m, where the shots show the fight
-		// Close slowly on near targets so there is time to shoot
-		ThrottleInput = Distance < 60000.f ? (Throttle > 0.25f ? -1.f : 0.f) : ThrottleInput;
+		ThrottleInput = Distance < 50000.f ? (Throttle > 0.4f ? -1.f : 0.f) : ThrottleInput;
+		if (bReaper && !bDemoSawClose && Distance < 35000.f)
+		{
+			bDemoSawClose = true;
+			QueueShot(0.f, TEXT("reaper close"));
+		}
+		if (bReaper && LockProgress >= 1.f && DemoMissileGap <= 0.f && Distance > 45000.f && Missiles > 0)
+		{
+			FireMissile();
+			DemoMissileGap = 5.f;
+			if (++DemoMissilesFired <= 2)
+			{
+				QueueShot(0.45f, TEXT("missile launch"));
+				QueueShot(1.3f, TEXT("missile flying"));
+			}
+		}
 	}
 	else
 	{
-		Stick = FVector2D(0.3f, 0.f);  // circle until a drone comes into the nose's cone
+		RollInput = 0.f;
+		Stick = FVector2D(0.3f, 0.f);  // circle until something comes into the nose's cone
 		bFireHeld = false;
 	}
 
-	static TWeakObjectPtr<ARewildDrone> Engaged;
-	if (Engaged.IsValid() && !Engaged->IsAlive() && bDemoTargetAlive)
+	// A kill: what it was fighting has died (the wreck stays a second before it goes).
+	AActor* E = DemoEngaged.Get();
+	const URewildHealthComponent* EH = E ? E->FindComponentByClass<URewildHealthComponent>() : nullptr;
+	if (bDemoTargetAlive && EH && EH->IsDead())
 	{
 		++DemoKills;
 		if (DemoKills <= 3)
 		{
-			DemoShotAt.Add(DemoTime + 0.08f);
-			DemoShotAt.Add(DemoTime + 0.6f);
+			QueueShot(0.08f, FString::Printf(TEXT("kill %d"), DemoKills));
+			QueueShot(0.6f, FString::Printf(TEXT("kill %d, after"), DemoKills));
 		}
 	}
-	if (Drone != Engaged.Get())
+	if (T != E)
 	{
-		Engaged = Drone;
+		DemoEngaged = T;
+		E = T;
+		EH = E ? E->FindComponentByClass<URewildHealthComponent>() : nullptr;
 	}
-	bDemoTargetAlive = Engaged.IsValid() && Engaged->IsAlive();
+	bDemoTargetAlive = EH && !EH->IsDead();
 
-	if (DemoTime > 15.f && DemoTime < 15.f + Dt * 1.5f)
+	if (DemoTime > 20.f && DemoTime < 20.f + Dt * 1.5f)
 	{
 		SetCockpitView(true);
+		QueueShot(0.6f, TEXT("cockpit"));
 	}
-	if (DemoTime > 18.f && bCockpitView)
+	if (DemoTime > 23.f && bCockpitView)
 	{
 		SetCockpitView(false);
 	}
-	for (int32 I = DemoShotAt.Num() - 1; I >= 0; --I)
+	for (int32 I = DemoQueue.Num() - 1; I >= 0; --I)
 	{
-		if (DemoTime >= DemoShotAt[I])
+		if (DemoTime >= DemoQueue[I].Key)
 		{
-			Shoot(bCockpitView ? TEXT("cockpit") : (DemoKills > 0 ? TEXT("kill") : TEXT("attack")));
-			DemoShotAt.RemoveAt(I);
+			Shoot(DemoQueue[I].Value);
+			DemoQueue.RemoveAt(I);
 		}
 	}
-	if (DemoTime > 40.f || (DemoKills >= 3 && DemoShotAt.Num() == 0 && DemoTime > 17.f))
+	if (DemoTime > 90.f || (DemoKills >= 3 && DemoQueue.Num() == 0 && DemoTime > 25.f))
 	{
+		UE_LOG(LogTemp, Display, TEXT("[rewild demo] done at %.1f s: %d kills, %d missiles, %d flare salvos, %d hits taken, %d deaths, hull %.0f%%, Reaper slugs fired %d"),
+			DemoTime, DemoKills, DemoMissilesFired, DemoFlareSalvos, DemoHitsTaken, DemoDeaths, Health->GetHullFraction() * 100.f, ARewildReaper::SlugsFired);
 		if (APlayerController* PC = Cast<APlayerController>(GetController()))
 		{
 			PC->ConsoleCommand(TEXT("quit"));

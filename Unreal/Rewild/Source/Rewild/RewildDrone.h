@@ -20,7 +20,7 @@ enum class ERewildDroneMotion : uint8
 /**
  * A training drone from the Argo's kit (first fight, milestone 3): high-visibility, built to be shot at. Armed drones
  * turn to face the player and fire weak training bolts, to test the shields. Shot down, it breaks into its fragments
- * and returns 6 seconds later.
+ * and returns 6 seconds later, until the Harrow come.
  */
 UCLASS()
 class REWILD_API ARewildDrone : public AActor
@@ -63,6 +63,7 @@ private:
 	void TickArmed(float Dt);
 	void Die();
 	void Respawn();
+	bool HarrowHaveCome() const;
 };
 
 /** Places the training drones ahead of the player start (put one in the level; it faces the player's heading). */

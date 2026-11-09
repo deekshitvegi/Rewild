@@ -18,6 +18,7 @@ namespace
 	// it; 12 cm x 6 m barely showed (8 Nov 2026). Width grows with distance to stay about 2 pixels wide.
 	const FVector CannonScale(0.25f, 0.25f, 20.f);
 	const FVector TrainingScale(0.3f, 0.3f, 8.f);
+	const FVector SlagScale(0.55f, 0.55f, 7.f);  // a fat short slug: unlike the player's long tracers
 	constexpr float MinWidthPerMetre = 0.002f;
 
 	UInstancedStaticMeshComponent* MakeLayer(AActor* Owner, const TCHAR* Name, UStaticMesh* Mesh, UMaterialInterface* Material)
@@ -42,11 +43,14 @@ ARewildBoltRenderer::ARewildBoltRenderer()
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> Cylinder(TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> CannonMat(TEXT("/Game/FirstFight/FX/MI_Bolt_Cannon.MI_Bolt_Cannon"));
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> TrainingMat(TEXT("/Game/FirstFight/FX/MI_Bolt_Training.MI_Bolt_Training"));
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> SlagMat(TEXT("/Game/FirstFight/FX/MI_Bolt_Slag.MI_Bolt_Slag"));
 	SetRootComponent(CreateDefaultSubobject<USceneComponent>(TEXT("Root")));
 	Cannon = MakeLayer(this, TEXT("Cannon"), Cylinder.Object, CannonMat.Object);
 	Cannon->SetupAttachment(GetRootComponent());
 	Training = MakeLayer(this, TEXT("Training"), Cylinder.Object, TrainingMat.Object);
 	Training->SetupAttachment(GetRootComponent());
+	Slag = MakeLayer(this, TEXT("Slag"), Cylinder.Object, SlagMat.Object);
+	Slag->SetupAttachment(GetRootComponent());
 }
 
 void URewildBolts::Fire(AActor* Shooter, ERewildBoltKind Kind, int32 Team, const FVector& Muzzle, const FVector& Velocity, float Damage)
@@ -59,7 +63,7 @@ void URewildBolts::Tick(float DeltaTime)
 	UWorld* World = GetWorld();
 	if (!World || Bolts.Num() == 0)
 	{
-		if (DrawnCannon + DrawnTraining > 0)
+		if (DrawnCannon + DrawnTraining + DrawnSlag > 0)
 		{
 			Draw();
 		}
@@ -125,17 +129,16 @@ void URewildBolts::Draw()
 	{
 		Eye = Cam->GetCameraLocation();
 	}
-	TArray<FTransform> Cannon, Training;
+	TArray<FTransform> Cannon, Training, Slag;
 	for (const FBolt& B : Bolts)
 	{
 		const FVector Dir = B.Velocity.GetSafeNormal();
-		const bool bCannon = B.Kind == ERewildBoltKind::Cannon;
-		FVector Scale = bCannon ? CannonScale : TrainingScale;
+		FVector Scale = B.Kind == ERewildBoltKind::Cannon ? CannonScale : (B.Kind == ERewildBoltKind::Slag ? SlagScale : TrainingScale);
 		const float Width = FMath::Max(Scale.X, FVector::Dist(B.Position, Eye) / 100.f * MinWidthPerMetre);
 		Scale.X = Scale.Y = Width;
 		// the streak trails behind the bolt's head
 		const FTransform T(FRotationMatrix::MakeFromZ(Dir).Rotator(), B.Position - Dir * Scale.Z * 50.f, Scale);
-		(bCannon ? Cannon : Training).Add(T);
+		(B.Kind == ERewildBoltKind::Cannon ? Cannon : (B.Kind == ERewildBoltKind::Slag ? Slag : Training)).Add(T);
 	}
 	auto Update = [](UInstancedStaticMeshComponent* C, TArray<FTransform>& Ts, int32& Drawn)
 	{
@@ -156,4 +159,5 @@ void URewildBolts::Draw()
 	};
 	Update(R->Cannon, Cannon, DrawnCannon);
 	Update(R->Training, Training, DrawnTraining);
+	Update(R->Slag, Slag, DrawnSlag);
 }

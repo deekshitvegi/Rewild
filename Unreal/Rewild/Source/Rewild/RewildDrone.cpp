@@ -9,6 +9,8 @@
 #include "RewildBolts.h"
 #include "RewildExplosion.h"
 #include "RewildHealthComponent.h"
+#include "RewildReaper.h"
+#include "EngineUtils.h"
 #include "UObject/ConstructorHelpers.h"
 
 namespace
@@ -125,9 +127,9 @@ void ARewildDrone::Tick(float DeltaSeconds)
 	if (Health->IsDead())
 	{
 		RespawnIn -= Dt;
-		if (RespawnIn <= 0.f)
+		if (RespawnIn <= 0.f && !HarrowHaveCome())
 		{
-			Respawn();
+			Respawn();  // practice is over once the Harrow come: shot-down drones stay down
 		}
 		return;
 	}
@@ -186,6 +188,18 @@ void ARewildDrone::TickArmed(float Dt)
 			Bolts->Fire(this, ERewildBoltKind::Training, Health->Team, Muzzle, Dir * TrainingBoltSpeed + Velocity, TrainingBoltDamage);
 		}
 	}
+}
+
+bool ARewildDrone::HarrowHaveCome() const
+{
+	for (TActorIterator<ARewildHarrowWave> It(GetWorld()); It; ++It)
+	{
+		if (It->HasStarted())
+		{
+			return true;
+		}
+	}
+	return false;
 }
 
 void ARewildDrone::Die()

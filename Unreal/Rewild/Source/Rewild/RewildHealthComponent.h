@@ -25,6 +25,9 @@ public:
 	bool ApplyDamage(float Amount, const FVector& Point);
 	void Restore();
 
+	/** Everything that can be shot, in this world (targeting, missile blasts, the HUD's markers). */
+	static void ForEach(const UWorld* World, TFunctionRef<void(URewildHealthComponent*)> Visit);
+
 	float GetShieldFraction() const { return ShieldMax > 0.f ? Shield / ShieldMax : 0.f; }
 	float GetHullFraction() const { return HullMax > 0.f ? Hull / HullMax : 0.f; }
 	bool IsDead() const { return bDead; }
@@ -38,7 +41,12 @@ public:
 	FRewildOnHit OnHit;
 	FRewildOnDeath OnDeath;
 
+protected:
+	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type Reason) override;
+
 private:
+	static TArray<TWeakObjectPtr<URewildHealthComponent>> Registry;
 	float Shield = 100.f;
 	float Hull = 100.f;
 	float SinceHit = 100.f;
