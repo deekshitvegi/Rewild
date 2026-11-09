@@ -142,6 +142,25 @@ click; do the rest yourself.
 - The owner's machines: PC with RTX 3070; laptop with RTX 4070 (Windows often runs apps on its Intel chip unless set
   per app in Settings, Display, Graphics); phone iPhone 15 Pro Max.
 
+## The web game (three.js, `web/`): worked on in the cloud chat while the PC builds Unreal
+
+The owner (9 Nov): "I'll work on the three.js version in this chat while the other chat works on the unreal engine".
+The cloud session improves `web/` here (the portfolio repo keeps its own frozen copy). State on 9 Nov:
+- **Crashes fixed** (b8685d7, 874e23f): nothing used to be freed; one trip round the worlds grew the page to ~3.5 GB
+  and the Claude app reloaded it. Models are now held while shown and freed 30 s after (models.ts
+  acquireModel/releaseModel, onModelEvicted for tree photographs and rigged animals); pictures follow the detail level
+  (detailBudget.ts: model pictures 1024 px Low, 2048 Medium); giants' maps freed out by TON 618. Low peaks ~570 MB.
+- **Models lit by their world** (merge ae9ff76): worldEnvironment.ts replaces the studio light box; strength set by the
+  hour to match the ground (surfaceShading), two thirds neutral; the fighter's hull is painted, not metal.
+- **In progress:** wormhole pull, black-hole fall (spaghettification, afterimages), warp distortion (a builder in a
+  worktree); Earth rebuild (another builder); new opening film from the game (docs/films/OPENING.md).
+- **Sound** (art/audio): owner's cast ARGO voice A, Dev 2, Amara 3, Kai 1, Noor 2 (`art/audio/lines`); music takes on
+  https://claude.ai/artifact/WRxDSjrEv6LtXYHjRTQbaK (owner still to pick A/B).
+- **Windows app** of the web game: `web/desktop` (Electron; `npm run app:win` on the PC). The owner chose a Windows app
+  only for now (no website hosting). A Hostinger zip of the portfolio site with the improved game is wanted later.
+- Test tools: memory test, light pictures and crash checks under the session scratchpad; dev servers web/ on 4201
+  (working copy) and 4202 (`rewild-main` worktree, main).
+
 ## Platforms (owner asked 8 Nov: "I dont need a browser game now right? I can install the game and play on any device?")
 
 - No browser game is needed. Unreal 5 cannot run in a browser (its web export was removed years ago), so the Claude
