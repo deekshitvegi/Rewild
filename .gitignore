@@ -19,3 +19,5 @@ Thumbs.db
 Unreal/**/RawSources/
 Unreal/Rewild/Content/Generated/
 __pycache__/
+# Claude Code agent worktrees
+.claude/worktrees/
