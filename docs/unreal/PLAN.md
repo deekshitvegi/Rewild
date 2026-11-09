@@ -42,27 +42,70 @@ MetaHumans for people. Every place is built to be entered and used, with a fight
 
 Rebuilt from scratch: flight, walking, planets and terrain, weather, water, and everything drawn.
 
-## Planets: the trade-off
+## Planets: land anywhere (decided by the owner, 9 Nov 2026)
 
-Unreal has no ready-made round, landable planet.
+Unreal has no ready-made round, landable planet. The two ways were: separate levels for space and for a few
+hand-built landing sites, or seamless round planets you can land on anywhere. The owner chose **land anywhere**:
+every world is a whole round planet at its real size, flown down to from orbit without a loading screen, and the
+hand-built places (the shrine garden, the Seed Vault, Jezero) sit inside it.
 
-1. **Space and ground as separate levels:** fly down through cloud while the ground level streams in. Fast to build,
-   every landing site hand-made to a high standard.
-2. **Seamless round planets** (land anywhere, like the web version): a planet system (Voxel Plugin 2, or our own
-   quadtree terrain on a sphere). Weeks before the first landing looks good.
+How it is built (our own C++, `Unreal/Rewild/Source/Rewild/Planet*`; no paid plugin):
 
-Start with 1. Decide on 2 with the owner once the battles are fun.
+- **The ground** is a sphere made of six square faces, each split into tiles that get finer as you come closer
+  (a quadtree): from orbit a few hundred tiles cover the planet, at your feet each tile is a few metres across with
+  a point every 25-50 cm. Tiles are built on worker threads, so flying never stutters.
+- **The height** comes from one function of position, used by everything (the ground, the sea, collision, where
+  grass and trees grow): the world's own map (real elevation for Earth, the Moon and Mars; designed and eroded for
+  Haven and the invented worlds), finer detail added below what the map holds, and **hand-built places** pressed
+  in where the story needs them (a bay, a tarn and its falls, level ground for a temple).
+- **Surfaces** are scanned materials (ambientCG, Poly Haven, Megascans; never painted) chosen by slope, height and
+  climate, seen from above as the world's own colour map.
+- **Light** is Lumen with hardware ray tracing (the ground is built while you play, so it has no precomputed
+  distance fields), virtual shadow maps, Sky Atmosphere and Volumetric Cloud at the planet's real size.
+- **Life** (grass, plants, trees, rocks) is placed around the player from the same height function, so the same
+  spot always grows the same trees.
+- **The sea** is a second sphere at sea level, drawn only where the ground dips below it.
 
 ## Order of work (each step playable, shown to the owner, then committed)
 
-1. **Set-up on the PC:** check Unreal 5 (latest 5.x), Visual Studio 2022 with "Game development with C++", Git and
-   Git LFS. Create the C++ project in `Unreal/` (name: Rewild). One HighResShot test shot. Commit.
-2. **The first fight** (GAME_DESIGN "the first hour", step 4): Earth from orbit with Sky Atmosphere and Volumetric
-   Cloud, the fighter flying, guns and lock-on missiles, shields and hull, Harrow reapers with dogfight AI, the crew
-   as wingmen, explosions and debris, win and lose. Show it before anything else.
-3. **Farside:** the first base built piece by piece on the Moon (the building system's core: placing modules,
-   drones building them, power and people).
-4. **The Argo under fire:** capital ship, turrets, the Harrow carrier, weak points.
-5. **On foot:** the astronaut with its motions, weapons, cover, the Seed Vault interior.
-6. **Boarding:** dock with a Harrow barge, fight inside.
-7. Then the prologue on Haven, and the rest of the campaign one mission at a time.
+Owner, 9 Nov 2026: "I know you want to build the fighting and all but I'd prefer to build the world's and
+everything first and once we have everything then we can proceed to build rest". So: **the worlds first, all of
+them, with everything in them; then the rest of the game.**
+
+Done:
+
+1. **Set-up on the PC** (8 Nov): Unreal 5.8.2, the C++ project, the first test shots.
+2. **The first fight** (8-9 Nov, docs/unreal/FIRST_FIGHT.md): Earth from orbit, the fighter, guns, missiles and
+   flares, shields and hull, the Harrow's Reapers, the crew as wingmen, the radio, the first story mission, the main
+   menu and saves. It stays playable as it is; its open items (missile models, sound effects, music, the full HUD)
+   wait for the second part.
+
+**Part one: the worlds.** Each world is done when it can be flown down to from orbit and walked, and its places,
+plants, animals, water, weather and the buildings, ships and people that belong there are built (ASSET_JOB.md for
+every one), shown to the owner as stills, then as a fly-down they can play in free play.
+
+3. **The planet system, on Haven** (docs/unreal/HAVEN.md): a round Haven flown down to from orbit and landed on
+   anywhere, ground detail from orbit to the player's feet, scanned surfaces, the sea, the sky.
+4. **Haven** (the prologue's world, first on the owner's list): the colony and its domes, the bay, the tarn and the
+   waterfall gorge, the shrine garden, the Greek and Indian temples, forests and real grass, TON 618 in the sky,
+   weather, birds and fish, the people of the colony.
+5. **The Garden**, the magical world by TON 618 (a story secret): glowing contour lines, a garden that grows where
+   you walk, the cloaked wanderer.
+6. **Earth**, rebuilt on the planet system from its real elevation and Blue Marble: clouds from orbit to the ground,
+   Svalbard and the Seed Vault (inside too), a ruined city, the Pacific, forests grown back over 300 years, the
+   Harrow's grinders.
+7. **The Moon**: Farside, Shackleton's rim (real LOLA heights).
+8. **Mars**: Jezero and the abandoned colony (real MOLA heights), dust storms, blue sunsets.
+9. **The rest of the worlds**: Venus and the Aeronauts' cloud city, Europa (the ice, the crack, the sea under it),
+   Titan's methane seas, Jupiter's deep, Saturn and its rings with the wormhole's mouth, Triton and the Makers'
+   archive (a story secret), TON 618 and the wormhole.
+10. **The ships and people** that the worlds do not already hold: the Argo inside and out, the Harrow carrier,
+    barges and grinders, the crew, Vesk and the allies as people.
+
+**Part two: the rest of the game**, once the worlds are done:
+
+11. **Building**: bases built piece by piece (Farside first): placing modules, drones building them, power, people.
+12. **The Argo under fire**: capital ships, turrets, the Harrow carrier, weak points.
+13. **On foot**: the astronaut with its motions, weapons, cover, fighting in the Seed Vault.
+14. **Boarding**: dock with a Harrow barge, fight inside.
+15. The campaign one mission at a time, sound and music, the full HUD.

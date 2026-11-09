@@ -224,6 +224,12 @@ people to play story mode only you get what I'm saying right? and an option to c
 Play Rewild.bat; the main menu opens) and "Yes, test it first" (the autopilot test before they play). They closed a
 test window by a misclick: a test window must be left alone.
 
+**9 Nov (the PC chat, after the first mission was tested).** "I know you want to build the fighting and all but I'd
+prefer to build the world's and everything first and once we have everything then we can proceed to build rest".
+The order of work changed (docs/unreal/PLAN.md): every world first, with everything in it, then the rest of the game.
+Asked how landing should work and which world comes first, they chose **land anywhere** and **Haven**
+(docs/unreal/HAVEN.md).
+
 ## Answers the user gave to Claude's questions
 - HUD: liked Cockpit and Game glass, then chose **F: glass with instruments**.
 - Earth size: **real size** (scale-up planned, docs/real-scale.md).
@@ -241,6 +247,10 @@ test window by a misclick: a test window must be left alone.
 - Reaper (the Harrow fighter, 9 Nov): **A, the sickle**, from three concepts (sickle, wasp, shard).
 - Free play (9 Nov): **every world open from the start, except story secrets** (the Garden by TON 618, the Makers'
   archive on Triton) that open when the story reaches them.
+- Order of work (9 Nov): **the worlds first, with everything in them, then the rest of the game**.
+- Landing on a world (9 Nov): **land anywhere**: every world a whole round planet flown down to from orbit, the
+  hand-built places inside it (not a few separate landing sites).
+- First world (9 Nov): **Haven**.
 
 ## Open list, in the agreed order
 1. #57 Haven: seas, lakes, rivers, waterfalls; temples/shrines from many cultures; more people, touchable

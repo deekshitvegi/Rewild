@@ -94,8 +94,10 @@ click; do the rest yourself.
 
 ## The owner's rules (all still hold)
 
-## The owner's rules (all still hold)
-
+- **The worlds first** (owner, 9 Nov: "build the world's and everything first and once we have everything then we
+  can proceed to build rest"). Every world, with its places, plants, animals, water, weather, buildings, ships and
+  people, before more fighting, building or missions. Every world is a whole round planet you **land on anywhere**,
+  flown down to from orbit; **Haven first**. Order and method: docs/unreal/PLAN.md, docs/unreal/HAVEN.md.
 - **Show, don't tell.** The owner is not a programmer; they judge by playing and by screenshots and videos. Render
   it and look at it before saying it looks right. Short plain updates, outcome first, no jargon.
 - **Visuals must be top notch** everywhere. The X posts in docs/visual-references.md are the bar. They spot "AI
