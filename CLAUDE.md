@@ -126,6 +126,10 @@ click; do the rest yourself.
   (x.com/threejs/status/2110563791922770264), in TON 618's gold-white light; the explorer becomes a cloaked wanderer.
 - Natural motion for the astronaut (motion capture, foot placement, lean, breathing, low-gravity gaits).
 - Real grass with curved blades, many tree species, forests, water, real weather that pushes you about.
+- The warp (9 Nov): the owner's reference for how warping should look is the Instagram reel
+  https://www.instagram.com/reel/DffIx7IEb18/ ("look into this video the way the warping and all is done"). Cloud
+  sessions cannot open Instagram; on the PC, ask the owner to save the video into `docs/references/` and study it
+  frame by frame (ffmpeg contact sheets) before building the warp, per ASSET_JOB.md.
 - Real science everywhere: real orbits and figures, the real Seed Vault, Shackleton's rim, Jezero.
 - The owner's machines: PC with RTX 3070; laptop with RTX 4070 (Windows often runs apps on its Intel chip unless set
   per app in Settings, Display, Graphics); phone iPhone 15 Pro Max.

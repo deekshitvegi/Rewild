@@ -197,6 +197,10 @@ and the rebuilt fighter: "Start flying" (milestone 2; playable from "Play Rewild
 (milestone 3): guns that need leading, recharging shields, hull damage, explosions and debris, a range of practice
 drones (some shoot back). Shots: docs/images/first-fight-*.jpg.
 
+**9 Nov.** "https://www.instagram.com/reel/DffIx7IEb18/ Look into this video the way the warping and all is done."
+Instagram is blocked from cloud sessions; the reel is the reference for the warp / jump effect, to be studied on the
+PC from a saved copy.
+
 ## Answers the user gave to Claude's questions
 - HUD: liked Cockpit and Game glass, then chose **F: glass with instruments**.
 - Earth size: **real size** (scale-up planned, docs/real-scale.md).
