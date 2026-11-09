@@ -7,7 +7,7 @@ import type { ExpeditionBody } from './bodies';
  *
  * - The air is real air, scattering as air does: Rayleigh's blue, a little haze (Mie) bright round the sun,
  *   and sunlight reddened by the long way in at the terminator. Single scattering along the view, the sunlight
- *   reaching each point worked out with Schüler's approximation of the Chapman function, so the night side is
+ *   reaching each point worked out with the Chapman function (through erfc's bounds), so the night side is
  *   black, the limb a thin blue line fading to black, and the terminator a narrow warm band. Its depth straight
  *   down is the real one (Rayleigh 0.05, 0.11, 0.26 in red, green, blue).
  * - The game's Earth is small (12 km across a walk, 531 m a unit across the globe) and its air and clouds are
@@ -138,7 +138,9 @@ vec3 spaceVeil(vec3 pos, vec3 view, out vec3 through) {
     through = exp(-tau);
     float c = dot(view, uSunDir);
     vec3 sun = spaceSunlight(r + uSpaceH * 0.7, up);
-    vec3 ratio = (uSpaceBetaR * spacePhaseR(c) + vec3(uSpaceBetaM * spacePhaseM(c))) / (uSpaceBetaR + vec3(uSpaceBetaM * 1.1));
-    return uSunColor * 1.45 * 3.14159 * 1.6 * sun * ratio * (1.0 - through);
+    vec3 ratio = (uSpaceBetaR * max(spacePhaseR(c), 0.1) + vec3(uSpaceBetaM * spacePhaseM(c))) / (uSpaceBetaR + vec3(uSpaceBetaM * 1.1));
+    vec3 veil = uSunColor * 1.45 * 3.14159 * 2.4 * sun * ratio * (1.0 - through);
+    through = mix(through, vec3(dot(through, vec3(0.2126, 0.7152, 0.0722))), 0.5);
+    return veil;
 }
 `;

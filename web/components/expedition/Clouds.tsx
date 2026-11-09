@@ -155,7 +155,7 @@ const deckMaterial = (body: ExpeditionBody, radius: number, coverage: THREE.Text
             // nearer the square of them in light). Thin veils stay thin; the billows (close up) tear the
             // edges and open holes in the thin parts, not in the thick.
             float m = cov.r;
-            float density = clamp((m - 0.04) / 0.5, 0.0, 1.0);
+            float density = clamp((m - 0.08) / 0.47, 0.0, 1.0);
             density = clamp(density + fine * 0.5 * (1.0 - density * 0.6) * smoothstep(0.02, 0.2, density), 0.0, 1.0);
             // A storm fills the sky in.
             density += (1.0 - density) * uStorm * 0.85;
@@ -181,6 +181,9 @@ const deckMaterial = (body: ExpeditionBody, radius: number, coverage: THREE.Text
             }
             // Lit flank and shaded flank, strongest when the sun is low and the relief shows.
             float relief = clamp(slope * 7.0, -1.0, 1.0) * (0.35 + 0.65 * min(sunLow * 1.6, 1.0));
+            #ifdef CLOUD_MAP
+            if (length(uCamLocal) < uCloudRadius) relief *= 0.3;
+            #endif
 
             vec3 toCamera = uCamLocal - vLocal;
             float distance = length(toCamera);
@@ -202,7 +205,7 @@ const deckMaterial = (body: ExpeditionBody, radius: number, coverage: THREE.Text
             #ifdef CLOUD_MAP
             float thick = density * (0.45 + 0.55 * m);
             // From above, thick cloud throws back more light than thin.
-            vec3 topLit = sunLit * (1.05 + 0.55 * smoothstep(0.1, 0.7, m));
+            vec3 topLit = sunLit * (1.15 + 0.6 * smoothstep(0.1, 0.7, m));
             #else
             float thick = density * (0.55 + 0.45 * cov.g);
             vec3 topLit = sunLit * (0.86 + 0.18 * (1.0 - thick)) + skyLit * 0.08;
@@ -227,6 +230,8 @@ const deckMaterial = (body: ExpeditionBody, radius: number, coverage: THREE.Text
             if (uSpaceShare > 0.0 && !below) {
                 vec3 through;
                 vec3 sun = spaceSunlight(length(vLocal), d);
+                sun = mix(sun, vec3(dot(sun, vec3(0.2126, 0.7152, 0.0722))), 0.35);
+                sun *= mix(1.0, sqrt(clamp(dot(d, uSunDir) + 0.04, 0.0, 1.0)), 0.45);
                 vec3 veil = spaceVeil(vLocal, -view, through);
                 vec3 space = (base * sun + skyLit * 0.015) * through + veil;
                 color = mix(color, space, uSpaceShare);

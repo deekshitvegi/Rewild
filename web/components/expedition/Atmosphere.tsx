@@ -381,7 +381,7 @@ export const Atmosphere = ({ body, runtime }: { body: ExpeditionBody; runtime: E
                 uShell: { value: radius },
                 uSunDir: { value: body.sunDirection },
                 uSunColor: sunlightOf(body),
-                uSpaceGain: { value: 1.6 },
+                uSpaceGain: { value: 1.1 },
             },
         });
         return { material: shell, geometry: new THREE.SphereGeometry(1, 160, 96) };
