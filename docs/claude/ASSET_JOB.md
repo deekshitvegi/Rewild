@@ -124,3 +124,26 @@ on 4 cores made every frame take 7 minutes).
   shows a solid black cross-section (8 Nov).
 - Stills levels are shared: clear every other model's stills actors before shooting (the drone's first close-ups
   showed the fighter parked on the same spot) (8 Nov).
+- The throat's gas: round 1 measured 10-26% dark (satin, no lanes), round 2 80-93% (lanes too wide); the reel's tunnel frames
+  measure 23-60% dark (mean 47%), mid-tones RGB (25, 90, 205). Measure the dark share every round: one threshold moved it 40 points
+  (wormhole crossing, 9 Nov).
+- Afterimages that write no depth vanished behind the throat, which is drawn last and paints wherever nothing wrote depth: anything
+  see-through inside a sky sphere is ordered after it (9 Nov).
+- Afterimages as added rim light were invisible on bright blue gas; see-through shaded copies (alpha 0.5, each 0.7 of the last) read.
+  Making the ship's own materials transparent would have compiled new shader variants mid-crossing (three's OPAQUE define) (9 Nov).
+- Ghosts strung only along the line of a stretch hide inside the stretched hull: fan them across it, and look side-on (9 Nov).
+- A camera 0.66 lengths behind a ship stretched 2x sat inside the hull: place cameras from the stretched length (9 Nov).
+- A direction taken from the ship's velocity was zero under a test hold and the afterimages collapsed: take directions from the
+  geometry (the fall's orbit plane), not from what the last frame happened to do (9 Nov).
+- Inside the horizon Haven and the far mouth were drawn as plain discs in the sky: in there only light bent in by the tracer reaches
+  the eye, so the camera draws only the ship and the traced sky (9 Nov).
+- Squeezing the sky towards the heading fetched pixels from beyond the frame: black borders at full pulse. Measure distance as a
+  fraction of the way to the frame's edge in that direction and map rho -> rho + k rho (1 - rho): nothing past the edge (9 Nov).
+- A sky photograph (six draws of the whole scene) in the middle of the crossing is a visible stall once no film covers it: queue such
+  work for the frames that are full white (9 Nov).
+- The wormhole score's peak is at 33 s by its brightness (spectral centroid 1,460 Hz), not the 28 s it was described with: measure a
+  track's loudness and brightness per second before syncing a picture to it (9 Nov).
+- Voiced lines are 1.5-6.5 s each: ten lines did not fit an 11.6 s sequence. Time the beats from the lines' measured lengths, and give
+  lines that belong before the event (the approach) a trigger of their own (time to the throat) (9 Nov).
+- On a virtual clock the audio clock still runs in real time: a score that keeps itself in sync re-syncs every test frame. Mix test
+  films from the logged starts, not from what the browser played (9 Nov).
