@@ -82,6 +82,10 @@ click; do the rest yourself.
     mid-change; two nested NewLevel calls left a world in memory and the editor stopped with a fatal error.
   - After taking shots the editor exits with an access violation once its log is closed. Everything is saved by
     then and no crash report is written; harmless so far, look into it if it starts losing work.
+  - Never `git pull --rebase --autostash` (or anything that resets files) while an editor or game is running: it
+    holds the .uasset files open, the reset fails halfway and reverts some sources (9 Nov; the work came back from
+    the stash). Close Unreal first. This PC has no global git identity: pass the owner's `-c user.name/-c
+    user.email` to `pull --rebase` too, not only to `commit`.
 
 ## The owner's rules (all still hold)
 

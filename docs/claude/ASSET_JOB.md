@@ -124,3 +124,21 @@ on 4 cores made every frame take 7 minutes).
   shows a solid black cross-section (8 Nov).
 - Stills levels are shared: clear every other model's stills actors before shooting (the drone's first close-ups
   showed the fighter parked on the same spot) (8 Nov).
+- Weapons are Rewild's own designs, never copies of real ones: a brief to copy a real missile (the AIM-9X) in detail
+  was stopped twice by a safety check (9 Nov). Real hardware may guide proportions, never the specific weapon.
+- An AI concept can be geometrically impossible: fit a camera to the real model and report the leftover error (the
+  Reaper's blades matched within 7 px, its drum sat 150-190 px off anywhere a centred engine can be) (9 Nov).
+- Plate lips 15-20 cm proud vanished under dark paint at the concept distance; 30-40 cm lips with 5 cm rounded rims
+  read. Heat tint over 19% of the map at metallic 0.9 read as polished brass: desaturated temper colours, metallic
+  0.55-0.75 and roughness 0.6 read as dark cast iron (Reaper, 9 Nov).
+- Cycles reads a mesh attribute named "heat" as its smoke field: the tint bake came out 0.9% white, 19% once renamed.
+- Smoke trails made of stretched spheres read as a string of beads (each fades at its ends): strips turned to face
+  the camera, 20% longer than their stretch with the last tenth faded at each end, read as one trail (9 Nov).
+- A missile flame drawn as a cylinder read as a glowing rod: a cone from the nozzle, faded toward its silhouette,
+  with the white-hot point as its own small orb, reads as exhaust in vacuum (9 Nov).
+- Flares thrown back or down left the chase view: the camera sits above and behind and sees only 21 deg below the
+  middle. Thrown out at wing level they fan out in view (9 Nov).
+- A shield flash lighting the whole bubble read as a hard-edged glass egg, and at 3x brightness a white blob over
+  half the screen: a 1.5 m spot and a 1 m ring spreading 7 m from the hit, peaking near 1.5x mid-grey (9 Nov).
+- Save the checklist and the script into the repo folder before any long run: a power cut on 9 Nov lost two
+  builds' work except what was already on disk.

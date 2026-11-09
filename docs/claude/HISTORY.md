@@ -233,6 +233,9 @@ people to play story mode only you get what I'm saying right? and an option to c
 - Elevation and cloud maps for Earth (8 Nov): **yes, both** (NASA GEBCO elevation; Solar System Scope clouds, CC BY 4.0).
 - The fighter's cockpit (8 Nov): **B, the lowered deck**, so the view from the seat matches the approved cockpit
   concept (big glass down to about 20 degrees below eye level, low dash) at a slight cost to the old side silhouette.
+- Reaper (the Harrow fighter, 9 Nov): **A, the sickle**, from three concepts (sickle, wasp, shard).
+- Free play (9 Nov): **every world open from the start, except story secrets** (the Garden by TON 618, the Makers'
+  archive on Triton) that open when the story reaches them.
 
 ## Open list, in the agreed order
 1. #57 Haven: seas, lakes, rivers, waterfalls; temples/shrines from many cultures; more people, touchable

@@ -109,6 +109,40 @@ shoot pale blue training bolts back. Each respawns 6 s after it dies; so do you,
 Open: the fireball's edge shows a little stepping up close; decals and markings on the drone; sound; then milestone
 4, the Harrow.
 
+## The Harrow: where it stands (9 Nov 2026)
+
+Playable from `Play Rewild.bat`: after 35 s of practice the Harrow come (at once with `-RewildHarrow`): packs of
+Reapers from 3.5 km ahead, three, then four, then five, the next 8 s after one is destroyed. The game is meant to be
+hard (owner, 9 Nov): in 90 s the autopilot, a perfect shot that flares on time, takes 50-70 hits, ends at 20-70%
+hull and is sometimes shot down, for one or two kills. Stills: docs/images/first-fight-reaper*.jpg, -missile-kill,
+-flares, -lock-warning.
+
+- The Reaper: the sickle concept the owner chose (docs/reaper-concepts/), built in Blender from code by
+  `art/reaper/make_reaper.py` (14 m, 65k triangles, 13 fragments with frames and glowing ore conduits inside) and
+  brought in by `Scripts/firstfight/import_reaper.py`: dark cast alloy with heat-tinted blooms, rust and bright worn
+  edges, seams that glow hotter as it is hurt (it has no shield: 130 hull, 33 cannon hits or one missile). Mostly
+  rough and diffuse: in orbit a metal reflects black space, and the first Reapers vanished inside their brackets.
+  A soft orange furnace glow at the engine, never under about three pixels, shows one running away at 1 km.
+- How a Reaper flies (`Source/Rewild/RewildReaper.*`): like the player's fighter, banking into turns and pulling;
+  it leads its shots (from what it saw of the player a quarter second ago), breaks off after a pass, jinks when the
+  player sits on its tail, and when a missile comes it may throw flares and turn across the missile's path.
+- The pack (`ARewildHarrowWave`): one engages head-on while the others swing wide and turn in from the sides; the one
+  the player chases runs as bait while the rest close on the player's tail; now and then one swings wide again.
+  One Reaper at a time locks on with its missile (1.8 s), the next 3 s after the last one is gone.
+- Missiles and flares (`RewildMissiles.*`): hold the nose on a target and the amber ring closes in 1.2 s; right mouse
+  (left trigger) fires. Missiles drop clear, light, steer by proportional navigation within a turn limit and leave a
+  smoke trail; a proximity fuse and a 30 m blast. F (B on a gamepad) throws four flares out beside the ship; each
+  fools a Harrow missile one time in four, so a hard break at the right moment matters as much. Six missiles (one
+  back every 15 s), twelve flares (one back every 6 s); the shield waits 4 s, then refills at 20 a second.
+- The HUD: the lock ring, missiles as ticks and flares as an arc above the reticle, small corners on every Reaper
+  and pointers at the edge for those off screen (they flank: look for them), a pulsing amber arc toward a Reaper
+  locking on, and a ring on any missile coming.
+- `-RewildDemo` now fights the Harrow: guns, missiles, flares and breaks, with shots of the lock warning, flares,
+  a shield hit, the Reapers close, missile launches and kills, and a summary line in the log.
+
+Open: the missiles are stand-in cylinders (their flames and smoke are what show; a model of Rewild's own design is
+still to do); sound; the radio and the mission's start, win and lose (milestone 5).
+
 ## Milestones
 
 1. **Earth from orbit.** References: ISS photographs of Earth (day side, terminator, limb). Checklist with numbers,

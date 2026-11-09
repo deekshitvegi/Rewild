@@ -173,7 +173,8 @@ sentence case, like the rest of the UI) has: **Continue**, **Story**, **Free pla
 - **Story:** the campaign above, mission by mission, choices that cost or save lives.
 - **Free play:** the worlds without missions. Fly, explore, build bases, and fight when you choose: Harrow patrols
   still roam and still fight hard (the game is meant to be difficult), but nothing pushes you on. Nobody is made to
-  play the story to enjoy the game.
+  play the story to enjoy the game. Every world is open from the start, except a few story secrets that open once
+  the story reaches them: the Garden by TON 618 and the Makers' archive on Triton (the owner's choice, 9 Nov).
 - **Continue:** the game saves by itself at every checkpoint, at each mission's start and end, after building, and
   on quitting; Continue picks up the last game, story or free play, exactly where it was left. Story and free play
   keep separate saves, with a few slots each.
