@@ -27,6 +27,8 @@ import { HistoricSites } from './HistoricSites';
 import { Landmarks } from './Landmarks';
 import { HISTORIC_SITES, siteFrame } from './history';
 import { markGpuRestored, textureQueue } from './models';
+import { setDetailBudget } from './detailBudget';
+import { releaseGasMaps } from './gasMaps';
 import { EXPEDITIONS, startRun } from './expeditions';
 import { Volcano } from './Volcano';
 import { EnceladusGeysers } from './EnceladusGeysers';
@@ -394,6 +396,8 @@ export default function ExpeditionExperience({ onExit, onReady, start, quality: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
     const runtime = useMemo(() => createRuntime(quality, prefersReducedMotion()), []);
     runtime.quality = quality;
+    // Pictures loaded from now on follow the detail level's size (detailBudget.ts).
+    setDetailBudget(quality);
     // The costlier effects as chosen (Settings › Graphics); a change rebuilds the scene as the detail does.
     const features = useMemo(() => resolveFeatures(graphics.features, quality), [graphics.features, quality]);
     runtime.features = features;
@@ -422,6 +426,13 @@ export default function ExpeditionExperience({ onExit, onReady, start, quality: 
         setCrossing((last) => ({ to, film: !!runtime.transit, id: (last?.id ?? 0) + 1 }));
         window.setTimeout(() => setRegion(runtime.region), 450);
     }, [runtime]);
+    // Out by TON 618, the giants' maps are let go once their worlds have been taken down (gasMaps.ts).
+    useEffect(() => {
+        if (region !== 'ton') return undefined;
+        const since = performance.now();
+        const timer = window.setTimeout(() => releaseGasMaps(since), 8000);
+        return () => window.clearTimeout(timer);
+    }, [region]);
     const markRegionReady = useCallback(() => setRegionReady(true), []);
     const closeCrossing = useCallback(() => setCrossing(null), []);
     const [openLog, setOpenLog] = useState<{ site: DataSite; learned: string[] } | null>(null);
