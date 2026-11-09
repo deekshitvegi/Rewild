@@ -21,5 +21,10 @@ https://claude.ai/artifact/WRxDSjrEv6LtXYHjRTQbaK; the chosen takes are then mix
 | music-danger | Danger stinger, 30 s | 5399a874 |
 | voice-*-argoA / argoB | Film lines with ARGO voice A (preset "Vesper") or B ("Alistair"); Dev "Orion", Amara "Maya", Kai "Andre", Noor "Ines" | 8d1d4da1, 6ea2b0a9, 38ab2021, b41766b0, 4db1735d, 9ff80137, 8ca22ca4, 544147e4 |
 
+**Owner's picks (9 Nov):** ARGO is voice A ("Vesper"). The first crew voices sounded like AI slop to the owner; recast
+auditions `aud-<dev|amara|kai|noor>-<1..3>.mp3` (dry) and `-com.mp3` (over the ship's intercom, as in the films):
+Dev: Julian, Xavier, Marcus; Amara: Imogen, Sloane, Naomi; Kai: Caspian, Gideon, Callum; Noor: Elena, Nora, Hana.
+Intercom chain: high-pass 320 Hz, low-pass 3.4 kHz, 5:1 compression, tanh soft clip, faint band-limited pink noise.
+
 The lines are in docs/films/OPENING.md and web/components/expedition/films.ts (crossing), plus four new ones for
 the fall into TON 618.

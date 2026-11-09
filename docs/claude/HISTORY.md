@@ -201,9 +201,21 @@ drones (some shoot back). Shots: docs/images/first-fight-*.jpg.
 Instagram is blocked from cloud sessions; the reel is the reference for the warp / jump effect, to be studied on the
 PC from a saved copy.
 
+**9 Nov (the web game, this chat; the Unreal game in the PC chat).** The owner keeps working on the three.js game here
+while the PC session builds Unreal: "the game is lagging a lot like when I'm trying to do few things it freezes and
+restarts the whole page" (cause: nothing was ever freed; fixed b8685d7, 874e23f), "improve the visuals on this game by
+a lot I want to see textures, shaders and all properly on the 3d models and also the way the earth looks was bad",
+the wormhole reel (uploaded) and three black-hole videos (Stargaze, Cleo Abram, What If): spaghettification,
+afterimages, "warping the space around you". The opening film "looks like AI generated video": rebuild it from the
+game, longer, so the game loads behind it. Wants a Hostinger upload zip once fixed, and the game installable: chose a
+Windows app only for now (web/desktop, Electron). Higgsfield credits expiring today: "use them if needed anywhere but
+make it look real good" (music and voices, art/audio). Voices: "I like voice A but... some other voice sounded like AI
+slop" (all the crew voices): recast auditions.
+
 ## Answers the user gave to Claude's questions
 - HUD: liked Cockpit and Game glass, then chose **F: glass with instruments**.
 - Earth size: **real size** (scale-up planned, docs/real-scale.md).
+- ARGO's voice (9 Nov): **voice A** (Vesper). Windows app only for now (no website hosting). Crew voices: recast.
 - Engine (8 Nov): **Unreal Engine 5 now**. Space war: **all four kinds**. Story: **the war is the main story**.
 - Haven temples: **a mix from many cultures**. Wormhole video: **try both** (game-rendered and cinematic),
   later replaced by the crew films they asked for.
