@@ -12,6 +12,7 @@ cp $SP/site-build/THIRD_PARTY_NOTICES.md $SP/site/ 2>/dev/null || true
 mkdir -p $SP/site/textures && cp -r $SP/site-build/textures/expedition $SP/site-build/textures/nasa $SP/site-build/textures/badges $SP/site-build/textures/crew $SP/site-build/textures/story $SP/site/textures/
 cp -r $SP/site-build/cockpit $SP/site/cockpit
 [ -d $SP/site-build/films ] && cp -r $SP/site-build/films $SP/site/films
+[ -d $SP/site-build/audio ] && cp -r $SP/site-build/audio $SP/site/audio
 cp $SP/site-build/models/expedition/ATTRIBUTION.md $SP/site/ATTRIBUTION-models.md 2>/dev/null || true
 (cd $SP/hf/tools && node pack.mjs $ROOT/public/models/expedition $SP/site/models/expedition > $SP/pack.log)
 CSS=$(grep -o 'assets/index-[^"]*\.css' $SP/site-build/index.html | head -1)

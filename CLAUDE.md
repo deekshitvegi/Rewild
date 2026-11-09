@@ -157,14 +157,24 @@ The cloud session improves `web/` here (the portfolio repo keeps its own frozen 
   (detailBudget.ts: model pictures 1024 px Low, 2048 Medium); giants' maps freed out by TON 618. Low peaks ~570 MB.
 - **Models lit by their world** (merge ae9ff76): worldEnvironment.ts replaces the studio light box; strength set by the
   hour to match the ground (surfaceShading), two thirds neutral; the fighter's hull is painted, not metal.
-- **In progress:** wormhole pull, black-hole fall (spaghettification, afterimages), warp distortion (a builder in a
-  worktree); Earth rebuild (another builder); new opening film from the game (docs/films/OPENING.md).
+- **Crossing, fall and warp drawn by the game** (merge 4786e41): crossing.ts + WormholeTransit.tsx replace the AI
+  crossing film (Settings › Graphics › Wormhole crossing can bring the film back); fall.ts + Afterimages.tsx: falling
+  into TON 618 (whole at the horizon, spaghettified at the end, death card); spacetime.ts + ScreenWarp.tsx: the pulse
+  drive bends the stars. Voices.tsx + voiceLines.ts play the owner's cast; files in `web/public/audio`. Weak spots:
+  afterimages read as a comb, the warp's centre turns to a dark disc at full pulse, the break-in is a flash not a
+  shatter, the exit silhouette greys under bloom on Medium/High, the fall keeps the chapter HUD.
+- **Earth rebuilt from orbit** (merge 7605f1b; docs/claude/EARTH_LOOK.md): real clouds from a satellite map
+  (earth-clouds.webp, CC BY 4.0), air seen from space (earthSky.ts, Atmosphere `biome.space`), black space behind a
+  sunlit world (exposure.ts), cloud shadows, broad sun glint, rivers no wider than they are; High's volume cumulus only
+  below 800 m. Low +10-20% in space views, High same or less near the ground. Weak spots: ruined continents flat
+  ash-grey (palette rule: ask the owner), the deck is one flat layer, clouds never form or clear.
+- **In progress:** new opening film from the game (docs/films/OPENING.md).
 - **Sound** (art/audio): owner's cast ARGO voice A, Dev 2, Amara 3, Kai 1, Noor 2 (`art/audio/lines`); music takes on
   https://claude.ai/artifact/WRxDSjrEv6LtXYHjRTQbaK (owner still to pick A/B).
 - **Windows app** of the web game: `web/desktop` (Electron; `npm run app:win` on the PC). The owner chose a Windows app
   only for now (no website hosting). A Hostinger zip of the portfolio site with the improved game is wanted later.
-- **Preview** (the owner plays it in the Claude app): https://claude.ai/artifact/CWGQyhLzPfprRkdnnaMi7a, version 7 =
-  ae9ff76 (9 Nov), now built from this repo's `web/` (`web/tools/claude/prep_site_rw.sh`: packed models, page.html);
+- **Preview** (the owner plays it in the Claude app): https://claude.ai/artifact/CWGQyhLzPfprRkdnnaMi7a, version 8 =
+  7605f1b (9 Nov; v7 = ae9ff76), now built from this repo's `web/` (`web/tools/claude/prep_site_rw.sh`: packed models, page.html);
   published files in `web/tools/claude/published-preview.txt` for delta publishes (filesdelta.py). Before each
   publish: the strict-CSP check (cspserve.py + sitecheck, 0 violations).
 - Test tools: memory test, light pictures and crash checks under the session scratchpad; dev servers web/ on 4201
