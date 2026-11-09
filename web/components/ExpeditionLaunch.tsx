@@ -1,7 +1,7 @@
 import { Component, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ErrorInfo, type ReactNode } from 'react';
 import { loadSnapshot } from './expedition/loadProgress';
-import { FilmPlayer } from './expedition/FilmPlayer';
-import { openingFilm } from './expedition/films';
+import { openingPlace } from './expedition/films';
+import './expedition/film.css';
 
 /**
  * Going from the home page into the Expedition in one smooth move: a short
@@ -167,32 +167,49 @@ const TIPS = [
 ];
 
 /**
- * While the expedition loads: the opening film (films.ts) for where it begins, over the veil, with
- * a bar for how much has arrived and a tip. The game is revealed when the film has ended (or been
- * skipped, once the world is ready) and the world is ready.
+ * While the expedition loads: a dark screen with where it begins, a bar for how much has arrived and a tip. It fades
+ * as soon as the world is ready. (The opening film made from the game, docs/films/OPENING.md, will play here.)
  */
-const OpeningFilm = ({ ready, onDone }: { ready: boolean; onDone: () => void }) => {
-    const opening = useMemo(openingFilm, []);
+const OpeningCard = ({ ready, onDone }: { ready: boolean; onDone: () => void }) => {
+    const place = useMemo(openingPlace, []);
     const [tip, setTip] = useState(0);
+    const [shown, setShown] = useState(0);
+    const [closing, setClosing] = useState(false);
     useEffect(() => {
         if (ready) return undefined;
-        const timer = window.setInterval(() => setTip((i) => (i + 1) % TIPS.length), 5200);
-        return () => window.clearInterval(timer);
+        const tips = window.setInterval(() => setTip((i) => (i + 1) % TIPS.length), 5200);
+        // The bar never runs backwards, and waits at 97% for the last of the world.
+        const bar = window.setInterval(() => {
+            const snapshot = loadSnapshot();
+            const value = snapshot.total ? snapshot.done / snapshot.total : 0;
+            setShown((last) => Math.max(last, Math.min(0.97, value)));
+        }, 150);
+        return () => { window.clearInterval(tips); window.clearInterval(bar); };
     }, [ready]);
-    const progress = useCallback(() => {
-        const snapshot = loadSnapshot();
-        return snapshot.total ? snapshot.done / snapshot.total : 0;
-    }, []);
+    useEffect(() => {
+        if (!ready) return undefined;
+        setShown(1);
+        const fade = window.setTimeout(() => setClosing(true), 300);
+        const done = window.setTimeout(onDone, 1000);
+        return () => { window.clearTimeout(fade); window.clearTimeout(done); };
+    }, [ready, onDone]);
+    const percent = Math.round(shown * 100);
     return (
-        <FilmPlayer
-            film={opening.id}
-            ready={ready}
-            progress={progress}
-            title="Preparing the expedition"
-            detail={opening.detail}
-            tip={TIPS[tip]}
-            onDone={onDone}
-        />
+        <div className={`rewild-film is-card${closing ? ' is-closing' : ''}`}>
+            <div className="rewild-film__footer">
+                <div className="rewild-film__status">
+                    <p className="rewild-film__title">Preparing the expedition</p>
+                    <p className="rewild-film__detail" role="status">
+                        {ready ? 'Ready' : place}
+                        {!ready ? <span> · {TIPS[tip]}</span> : null}
+                    </p>
+                </div>
+                <span className="rewild-film__percent" aria-hidden="true">{percent}%</span>
+                <div className="rewild-film__bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent} aria-label="Loading">
+                    <span style={{ transform: `scaleX(${Math.max(0.02, shown)})` }} />
+                </div>
+            </div>
+        </div>
     );
 };
 
@@ -203,7 +220,7 @@ export const ExpeditionStage = ({ phase, onWarpDone, onReady, onExit }: {
     onExit: () => void;
 }) => {
     const mounted = phase === 'loading' || phase === 'on' || phase === 'leaving';
-    // The world reveals itself once it is ready and the opening film is over.
+    // The world reveals itself once it is ready and the loading screen has faded.
     const [worldReady, setWorldReady] = useState(false);
     const [filmDone, setFilmDone] = useState(false);
     useEffect(() => {
@@ -231,7 +248,7 @@ export const ExpeditionStage = ({ phase, onWarpDone, onReady, onExit }: {
                 </ExpeditionBoundary>
             )}
             <div className="expedition-veil" data-phase={phase} aria-hidden="true" />
-            {mounted && phase !== 'leaving' && !filmDone && <OpeningFilm ready={worldReady} onDone={markFilmDone} />}
+            {mounted && phase !== 'leaving' && !filmDone && <OpeningCard ready={worldReady} onDone={markFilmDone} />}
         </>
     );
 };

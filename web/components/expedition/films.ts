@@ -1,7 +1,7 @@
 /**
- * The films the game plays while it loads (FilmPlayer.tsx): an opening one while the world is
- * built after Begin expedition (ExpeditionLaunch.tsx), and the crossing of the wormhole while the
- * other system is built (WormholeFilm.tsx). Each comes as WebM (VP9: Chrome, Edge, Firefox,
+ * The films the game can play while it loads (FilmPlayer.tsx): the crossing of the wormhole while
+ * the other system is built (WormholeFilm.tsx), when the player picks a film over the crossing the
+ * game draws (Settings › Graphics). Each comes as WebM (VP9: Chrome, Edge, Firefox,
  * Android) and MP4 (H.264: Safari, iPhone). Kept free of the game's own modules: the home page
  * loads this before the expedition has been fetched.
  */
@@ -22,15 +22,6 @@ export interface Film {
 
 // Captions, timed from the films' own audio (word timings checked against the loudness trace).
 export const FILMS = {
-    'opening-haven': { src: 'films/opening-haven', cues: [
-        { at: 0.7, end: 10.06, who: 'ARGO', text: 'Haven. The only world by TON 618 that can hold life. One day here is ten years on Earth.' },
-        { at: 10.48, end: 14.24, who: 'Dev', text: 'Haven colony, this is the Argo. We\'re coming down.' },
-    ] },
-    'opening-solar': { src: 'films/opening-solar', cues: [
-        { at: 0.5, end: 4.25, who: 'ARGO', text: 'Solar System. Third planet: Earth.' },
-        { at: 6.3, end: 9.46, who: 'Dev', text: 'Home. What\'s left of it.' },
-        { at: 10.3, end: 11.98, who: 'Amara', text: 'Then let\'s bring it back.' },
-    ] },
     'crossing-out': { src: 'films/crossing-out', cues: [
         { at: 1.15, end: 5.59, who: 'ARGO', text: 'Throat in thirty seconds. Tidal load is rising.' },
         { at: 5.84, end: 8.48, who: 'Dev', text: 'Everybody strapped in? This is it.' },
@@ -92,15 +83,19 @@ export const saveCrossingFilm = (choice: CrossingFilm) => {
 export const crossingFilmFor = (to: 'sol' | 'ton', choice: CrossingFilm = readCrossingFilm()): FilmId =>
     `${choice === 'quick' ? 'quick' : 'crossing'}-${to === 'ton' ? 'out' : 'home'}` as FilmId;
 
-/** The opening film for where the expedition begins: a new game on Haven, anyone further on in the Solar System. */
-export const openingFilm = (): { id: FilmId; detail: string } => {
+/**
+ * Where the expedition begins, shown while it loads (ExpeditionLaunch.tsx): a new game on Haven, anyone further on in
+ * the Solar System. (The AI-generated opening films were taken out at the owner's request on 9 Nov 2026; the
+ * opening made from the game itself, docs/films/OPENING.md, takes their place when it is ready.)
+ */
+export const openingPlace = (): string => {
     try {
         const saved = JSON.parse(window.localStorage.getItem('expedition-progress-v1') ?? 'null') as { story?: unknown } | null;
-        if (saved && Array.isArray(saved.story) && saved.story.length > 0) return { id: 'opening-solar', detail: 'Landing near Dallas, on Earth' };
+        if (saved && Array.isArray(saved.story) && saved.story.length > 0) return 'Landing near Dallas, on Earth';
     } catch {
         // A damaged save begins as a new game does.
     }
-    return { id: 'opening-haven', detail: 'Landing at the colony on Haven' };
+    return 'Landing at the colony on Haven';
 };
 
 /** How loud the films play: the game's overall sound level (Settings › Sound), nothing when it is switched off. */
