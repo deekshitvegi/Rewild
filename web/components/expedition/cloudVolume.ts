@@ -818,7 +818,9 @@ float cvDensity(int kind, bool vortex, vec3 p, mat4 L, out float hf) {
     // deck takes over again.)
     float earthCover = 0.0;
     if (kind == 0) {
-        earthCover = smoothstep(0.08, 0.6, texture(cvCoverMap, cvCoverFrame * normalize(p)).r) * L[0].z;
+        // (A few mip levels down: the photographed cover's fine fibres, constant up a column, built the puffs
+        // into vertical walls; smoothed to cells a couple of hundred metres across, the noise shapes them.)
+        earthCover = smoothstep(0.08, 0.6, textureLod(cvCoverMap, cvCoverFrame * normalize(p), 3.5).r) * L[0].z;
         if (earthCover < 0.01) { cvCover = 0.0; return 0.0; }
     }
 #endif
