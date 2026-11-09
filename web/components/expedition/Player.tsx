@@ -163,11 +163,17 @@ const Lighting = ({ runtime }: { runtime: ExpeditionRuntime }) => {
             // dim twilight sky alone does not give them: keep the world's colours, set the strength by the hour.
             const lum = (c: THREE.Color) => 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
             const mean = (lum(look.zenith) + lum(look.horizon) + lum(look.ground)) / 3;
-            const target = air > 0 ? THREE.MathUtils.lerp(0.1, 0.62, runtime.daylight) : 0.07;
+            const target = air > 0 ? THREE.MathUtils.lerp(0.2, 0.8, runtime.daylight) : 0.08;
             const gain = THREE.MathUtils.clamp(target / Math.max(mean, 1e-3), 0.5, 8);
-            look.zenith.multiplyScalar(gain);
-            look.horizon.multiplyScalar(gain);
-            look.ground.multiplyScalar(gain);
+            // Paint and metal keep most of their own colour: a third of the sky's tint, the rest grey of the same
+            // brightness (a white hull reflecting a teal sky and green grass at full strength read as dirty).
+            for (const c of [look.zenith, look.horizon, look.ground]) {
+                c.multiplyScalar(gain);
+                const grey = lum(c);
+                c.lerp(haze.setRGB(grey, grey, grey), 0.65);
+            }
+            // The horizon is the brightest part of a sky with air: what makes a glossy hull gleam along its sides.
+            if (air > 0) look.horizon.multiplyScalar(1.35);
             updateWorldEnvironment(gl, gpuEpoch, look);
         }
     });
