@@ -160,6 +160,9 @@ on 4 cores made every frame take 7 minutes).
   the drop in transmittance. Even then the clouds along the limb came out orange (their light seen through a long
   column keeps only its red); real limbs over cloud are white-blue (light scattered many times): keep half the
   colour of the extinction and give the air's light at least a hazy horizon's brightness.
+- Volume cumulus read from the photographed cover at full detail grew into vertical walls (the cover is the same all
+  the way up a column, and the photograph is all fine fibres): read it a few mip levels down (cells of a couple of
+  hundred metres) and let the 3D noise shape the puffs. Look up from the ground on High after any cover change.
 - Background dev servers in a cloud session stop after two hours (one stopped in the middle of a nine-view render):
   restart them before a long run.
 - Wikimedia refuses this machine's API searches and full-size files (rate limit); its standard thumbnail widths
