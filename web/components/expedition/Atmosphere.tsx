@@ -9,6 +9,8 @@ const eyeDelta = new THREE.Vector3();
 import { WEATHER_UNIFORMS } from './weather';
 import { skyOf, sunlightOf } from './surfaceShading';
 import { skyScale } from './skyScale';
+import { setSpaceView, SPACE_AIR_GLSL, SPACE_FROM, spaceViewOf } from './earthSky';
+import { REVIVAL } from './revival';
 
 /**
  * The air around a rocky planet: a sphere drawn from the inside, whose colour
@@ -53,6 +55,8 @@ uniform float uBackG;
 uniform float uBackGain;
 uniform vec3 uBackDeep;
 uniform float uClear;
+// Its share of the picture (1 but on Earth from above its weather, where the space view takes over).
+uniform float uKeep;
 varying vec3 vLocal;
 
 vec2 sphereHit(vec3 o, vec3 r, float radius) {
@@ -204,7 +208,105 @@ void main() {
         transmittance *= sightT;
     }
 
-    gl_FragColor = vec4(seen, transmittance);
+    gl_FragColor = vec4(seen * uKeep, mix(1.0, transmittance, uKeep));
+    #include <tonemapping_fragment>
+    #include <colorspace_fragment>
+}
+`;
+
+/**
+ * Earth from above its weather (earthSky.ts): real air, single scattering along the view, the sunlight at
+ * each point through the air (Chapman), Rayleigh and haze phase functions. A shell just under the camera
+ * (so it is always seen from outside and veils the ground too), samples bunched where the ray runs lowest.
+ */
+const spaceVertex = /* glsl */ `
+#include <common>
+#include <logdepthbuf_pars_vertex>
+uniform float uShell;
+varying vec3 vLocal;
+void main() {
+    vec3 p = position * uShell;
+    vLocal = p;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+    #include <logdepthbuf_vertex>
+}
+`;
+
+const spaceFragment = /* glsl */ `
+#include <common>
+#include <logdepthbuf_pars_fragment>
+uniform vec3 uCamLocal;
+uniform float uRadius;
+uniform float uShell;
+uniform vec3 uSunDir;
+uniform vec3 uSunColor;
+uniform float uSpaceShare;
+uniform float uSpaceGain;
+${SPACE_AIR_GLSL}
+varying vec3 vLocal;
+
+vec2 sphereHit(vec3 o, vec3 r, float radius) {
+    float b = dot(o, r);
+    float c = dot(o, o) - radius * radius;
+    float disc = b * b - c;
+    if (disc < 0.0) return vec2(1.0, -1.0);
+    float s = sqrt(disc);
+    return vec2(-b - s, -b + s);
+}
+
+void main() {
+    #include <logdepthbuf_fragment>
+    vec3 o = uCamLocal;
+    vec3 r = normalize(vLocal - o);
+    vec2 shell = sphereHit(o, r, uShell);
+    float t0 = max(shell.x, 0.0);
+    float t1 = shell.y;
+    vec2 ground = sphereHit(o, r, uRadius);
+    bool overGround = ground.x > 0.0 && ground.x < ground.y;
+    if (overGround) t1 = min(t1, ground.x);
+    if (t1 <= t0) discard;
+    // The ray's lowest point (or where it meets the ground): the air is densest there, so the samples are
+    // bunched round it, out to each end (spacing growing as the square).
+    float tc = clamp(-dot(o, r), t0, t1);
+    float c = dot(r, uSunDir);
+    float phaseR = spacePhaseR(c);
+    float phaseM = spacePhaseM(c);
+    vec3 sum = vec3(0.0);
+    // Segment by segment from the near end: each adds the light scattered towards the eye in it, as the share of
+    // what it takes out of the view (scattering over extinction, the drop in what gets through across it), so a
+    // path too thick to see through saturates to the colour of the light, not to whichever samples were taken.
+    float tA = t0;
+    vec3 seenA = exp(-spaceDepth(length(o + r * t0), -dot(normalize(o + r * t0), r)));
+    for (int k = 1; k <= 2 * SPACE_STEPS; k++) {
+        float u = float(k) / float(SPACE_STEPS);
+        float tB = u <= 1.0 ? tc - (tc - t0) * (1.0 - u) * (1.0 - u) : tc + (t1 - tc) * (u - 1.0) * (u - 1.0);
+        vec3 pB = o + r * tB;
+        float rB = length(pB);
+        vec3 seenB = exp(-spaceDepth(rB, -dot(pB / rB, r)));
+        vec3 pM = o + r * (0.5 * (tA + tB));
+        float rM = length(pM);
+        float h = max(rM - uRadius, 0.0);
+        vec3 scatterR = uSpaceBetaR * exp(-h / uSpaceH);
+        float scatterM = uSpaceBetaM * exp(-h / uSpaceHM);
+        vec3 share = (scatterR * phaseR + vec3(scatterM * phaseM)) / max(scatterR + vec3(scatterM * 1.1), vec3(1e-9));
+        sum += share * spaceSunlight(rM, pM / rM) * max(seenA - seenB, vec3(0.0));
+        tA = tB;
+        seenA = seenB;
+    }
+    // What the air lets through from behind: the ground, or space and the stars.
+    vec3 tau;
+    if (overGround) {
+        vec3 pg = o + r * t1;
+        tau = spaceDepth(length(pg), -dot(normalize(pg), r));
+    } else {
+        vec3 pc = o + r * tc;
+        tau = 2.0 * spaceDepth(length(pc), 0.0);
+    }
+    float through = dot(exp(-tau), vec3(0.2126, 0.7152, 0.0722));
+    // In the game's light: the ground under the sun is albedo x 1.45 x sunlight (surfaceShading), so the sun's
+    // irradiance is pi x 1.45 x sunlight; uSpaceGain stands for the light scattered more than once.
+    vec3 seen = uSunColor * 1.45 * 3.14159 * uSpaceGain * sum;
+    gl_FragColor = vec4(seen * uSpaceShare, mix(1.0, through, uSpaceShare));
     #include <tonemapping_fragment>
     #include <colorspace_fragment>
 }
@@ -253,8 +355,42 @@ export const Atmosphere = ({ body, runtime }: { body: ExpeditionBody; runtime: E
             uBackGain: { value: biome.backlit?.gain ?? 0.6 },
             uBackDeep: { value: new THREE.Vector3(...(biome.backlit?.deep ?? [1, 1, 1])) },
             uClear: { value: biome.clearSight ?? 1 },
+            uKeep: { value: 1 },
         },
     }), [body, biome, radius]);
+    // Earth from above its weather: the space view (earthSky.ts).
+    const space = useMemo(() => {
+        if (!biome.space) return null;
+        const shell = new THREE.ShaderMaterial({
+            vertexShader: spaceVertex,
+            fragmentShader: spaceFragment,
+            // (Steps each side of the ray's lowest point; Low measured +15 to +130 ms of a 0.2-1.3 s software frame
+            // with 4, so 3 there.)
+            defines: { SPACE_STEPS: runtime.quality === 0 ? 3 : runtime.quality === 1 ? 6 : 8 },
+            side: THREE.FrontSide,
+            transparent: true,
+            depthWrite: false,
+            blending: THREE.CustomBlending,
+            blendSrc: THREE.OneFactor,
+            blendDst: THREE.SrcAlphaFactor,
+            blendSrcAlpha: THREE.ZeroFactor,
+            blendDstAlpha: THREE.OneFactor,
+            uniforms: {
+                ...spaceViewOf(body),
+                // (The same vector as the walker's sky: set once per view below.)
+                uCamLocal: material.uniforms.uCamLocal,
+                uRadius: { value: body.radius },
+                uShell: { value: radius },
+                uSunDir: { value: body.sunDirection },
+                uSunColor: sunlightOf(body),
+                uSpaceGain: { value: 1.1 },
+            },
+        });
+        return { material: shell, geometry: new THREE.SphereGeometry(1, 160, 96) };
+    }, [body, biome, material, radius, runtime.quality]);
+    useEffect(() => () => { space?.material.dispose(); space?.geometry.dispose(); }, [space]);
+    const spaceRef = useRef<THREE.Mesh>(null);
+    const meshRef = useRef<THREE.Mesh>(null);
     const geometry = useMemo(() => new THREE.SphereGeometry(radius, 96, 64), [radius]);
     useEffect(() => () => { material.dispose(); geometry.dispose(); }, [material, geometry]);
 
@@ -275,6 +411,24 @@ export const Atmosphere = ({ body, runtime }: { body: ExpeditionBody; runtime: E
         // Less than a pixel across: nothing to draw.
         const fov = (camera as THREE.PerspectiveCamera).fov ?? 60;
         group.visible = (radius * scale / Math.max(scenePosition.distanceTo(camera.position), 1)) * (size.height / 2) / Math.tan(THREE.MathUtils.degToRad(fov / 2)) > 0.75;
+        if (space) {
+            // How high the camera is over this world's ground (in its own size, when drawn larger far off).
+            const height = runtime.camera.distanceTo(body.position) / scale - body.radius;
+            // The ruined world's dust aloft, as its sky has it (ExpeditionHUD setAshSky).
+            const ash = 0.75 * (1 - THREE.MathUtils.smoothstep(REVIVAL.value, 0.15, 0.85));
+            setSpaceView(body, height, ash);
+            const share = spaceViewOf(body).uSpaceShare.value;
+            const H = spaceViewOf(body).uSpaceH.value;
+            material.uniforms.uKeep.value = 1 - share;
+            meshRef.current!.visible = share < 0.999;
+            const shellMesh = spaceRef.current;
+            if (shellMesh) {
+                shellMesh.visible = height > SPACE_FROM * 0.9 && share > 0.001;
+                // Just under the camera, so it is seen from outside and lies over the ground; high enough to
+                // hold all the air that shows (fourteen scale heights).
+                space.material.uniforms.uShell.value = body.radius + Math.max(Math.min(H * 14, height * 0.8), 1);
+            }
+        }
     }, -1);
     useEffect(() => watchView(runtime, (eye) => {
         const group = groupRef.current;
@@ -283,7 +437,8 @@ export const Atmosphere = ({ body, runtime }: { body: ExpeditionBody; runtime: E
 
     return (
         <group ref={groupRef}>
-            <mesh geometry={geometry} material={material} frustumCulled={false} renderOrder={2} />
+            <mesh ref={meshRef} geometry={geometry} material={material} frustumCulled={false} renderOrder={2} />
+            {space && <mesh ref={spaceRef} geometry={space.geometry} material={space.material} frustumCulled={false} renderOrder={2} visible={false} />}
         </group>
     );
 };

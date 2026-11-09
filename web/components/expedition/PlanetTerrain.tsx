@@ -17,6 +17,8 @@ import { trackLoad } from './loadProgress';
 import { directionToBody, placeBodyGroup } from './motion';
 import { skyScale } from './skyScale';
 import { REVIVAL_GLSL } from './revival';
+import { CLOUD_SHADOW, CLOUD_SHADOW_GLSL } from './cloudShadow';
+import { SPACE_AIR_GLSL, spaceViewOf } from './earthSky';
 
 // Height bands (low->mid, mid->high, blend width), steepness (rock below
 // slope.x, grass above slope.y) and how strongly cliffs show strata.
@@ -302,6 +304,8 @@ uniform float uTime;
 #ifdef TERRAIN_EARTH
 ${WIND_GLSL}
 ${WIND_GUST_GLSL}
+${CLOUD_SHADOW_GLSL}
+${SPACE_AIR_GLSL}
 #endif
 #ifdef TERRAIN_WATER
 // The liquid: its colour deep and shallow, the tint of the bed seen through
@@ -605,6 +609,19 @@ vec3 vFlowDir(float speed) { return vFlow / max(speed, 1e-3); }
 #else
 vec3 vFlowDir(float speed) { return vec3(0.0); }
 #endif
+#ifdef TERRAIN_EARTH
+// The sun's glint off the sea where its waves are finer than a pixel (from on high), as photographed from orbit:
+// not a point but a broad soft patch, the waves tilting a little of it towards the eye over ten degrees or more
+// (Cox and Munk's wave slopes, a Beckmann spread of 0.06), brightest seen at a slant (Fresnel). Times the sun.
+float seaGlint(vec3 up, vec3 toEye) {
+    vec3 halfway = normalize(toEye + uSunDir);
+    float nh = max(dot(up, halfway), 1e-3);
+    float nh2 = nh * nh;
+    float spread = exp(-(1.0 - nh2) / (nh2 * 0.06)) / (3.14159 * 0.06 * nh2 * nh2);
+    float fresnel = 0.02 + 0.98 * pow(1.0 - max(dot(toEye, halfway), 0.0), 5.0);
+    return min(fresnel * spread * 0.25 / max(dot(up, toEye), 0.12), 0.22) * 1.45 * 3.14159 * smoothstep(-0.02, 0.1, dot(up, uSunDir));
+}
+#endif
 vec3 waterColor(vec3 bottom, vec2 water, vec3 up, vec3 pos, float footprint) {
     vec3 toEye = uCamLocal - pos;
     float dist = length(toEye);
@@ -657,7 +674,13 @@ vec3 waterColor(vec3 bottom, vec2 water, vec3 up, vec3 pos, float footprint) {
     #endif
     float sunUp = smoothstep(-0.02, 0.08, dot(up, uSunDir));
     float spec = pow(max(dot(R, uSunDir), 0.0), 420.0) * 6.0 * sunUp;
-    vec3 color = mix(lit, sky, fresnel) + uSunColor * spec + uSunColor * waterGlint(N, V, up, pos, footprint, speed > 0.03 ? vFlowDir(speed) : vec3(0.0), speed) * sunUp;
+    vec3 sunOff = uSunColor * spec + uSunColor * waterGlint(N, V, up, pos, footprint, speed > 0.03 ? vFlowDir(speed) : vec3(0.0), speed) * sunUp;
+    #ifdef TERRAIN_EARTH
+    // Further off than the ripples can be drawn, the broad glint instead.
+    float rough = smoothstep(0.8, 6.0, footprint);
+    sunOff = mix(sunOff, uSunColor * seaGlint(up, V), rough);
+    #endif
+    vec3 color = mix(lit, sky, fresnel) + sunOff * gSunShade;
     #if defined(TERRAIN_EARTH) || defined(TERRAIN_STREAMS)
     // Where a river runs fast over the shallows by its banks, white water in streaks along it.
     #ifdef TERRAIN_WATER_DETAIL
@@ -768,11 +791,16 @@ void main() {
     // far banks, where the corners are metres apart, as rows of teeth.
     // (The channel's depth less the bank's rise, as earth.ts terrainSurface and riverBank.)
     float riverDepth = (1.0 - smoothstep(0.012, 0.035, abs(vRiver))) * 3.2 - smoothstep(0.026, 0.07, abs(vRiver));
-    float edgeDepth = max(riverDepth, -vWater.y * 0.12);
+    float seaEdge = -vWater.y * 0.12;
+    float edgeDepth = max(riverDepth, seaEdge);
     // Out at sea, the depth at the corners (it knows the sea floor).
     waterHere.x = mix(max(edgeDepth, 0.0), vWater.x, smoothstep(30.0, 80.0, -vWater.y));
     float wetEdge = fwidth(edgeDepth) * 0.6 + 0.01;
-    wetHere = mix(smoothstep(-wetEdge, wetEdge, edgeDepth), smoothstep(0.0, 0.12, vWater.x), smoothstep(30.0, 80.0, -vWater.y));
+    // A river narrower than a pixel covers only that share of it: seen from high up, the channels had
+    // drawn as broad teal lines netting the whole continent (a channel is about 14 m across).
+    float riverCover = clamp(14.0 / max(length(fwidth(vLocalPos)), 1e-3), 0.0, 1.0);
+    float wetEdges = max(smoothstep(-wetEdge, wetEdge, seaEdge), smoothstep(-wetEdge, wetEdge, riverDepth) * riverCover);
+    wetHere = mix(wetEdges, smoothstep(0.0, 0.12, vWater.x), smoothstep(30.0, 80.0, -vWater.y));
     vec3 hue = globe / max(dot(globe, vec3(0.2126, 0.7152, 0.0722)), 1e-3);
     vec3 paletteHue = uPal[0] / max(dot(uPal[0], vec3(0.2126, 0.7152, 0.0722)), 1e-3);
     albedo = mix(albedo, albedo * clamp(hue / paletteHue, 0.25, 4.0), 0.7 * gentleHere * uGlobeReady);
@@ -826,6 +854,10 @@ void main() {
         #endif
     }
     #endif
+    #ifdef TERRAIN_EARTH
+    // Under the clouds' shadows (cloudShadow.ts): they move with the clouds that cast them.
+    gSunShade = cloudShade(vLocalPos);
+    #endif
     vec3 color = surfaceLight(albedo, Nlit, vDir) + playerLights(albedo, Nlit, vLocalPos);
     #ifdef TERRAIN_WATER
     float wet = wetHere;
@@ -845,9 +877,24 @@ void main() {
     #else
     color = mix(color, surfaceLight(globe, N, vDir), far);
     #endif
+    #ifdef TERRAIN_EARTH
+    // From orbit (earthSky.ts) the sunlight on the ground has come down through the air: white at noon, warm
+    // and fading at the terminator, none past it.
+    if (uSpaceShare > 0.0 && far > 0.0) {
+        vec3 sunAir = spaceSunlight(uRadius, vDir) / exp(-spaceDepth(uRadius, 1.0));
+        color *= mix(vec3(1.0), sunAir, uSpaceShare * far);
+    }
+    #endif
     vec3 toEye = normalize(uCamLocal - vLocalPos);
+    #ifdef TERRAIN_EARTH
+    // The sun's glint off the sea as photographed from orbit: not a point but a broad soft patch, the sea's
+    // waves tilting a little of it towards the eye over ten degrees or more (Cox and Munk's wave slopes,
+    // a Beckmann spread of 0.045), brightest seen at a slant (Fresnel). Not under cloud.
+    color += uSunColor * seaGlint(vDir, toEye) * water * far * gSunShade;
+    #else
     float glint = pow(max(dot(vDir, normalize(toEye + uSunDir)), 0.0), 160.0);
     color += uSunColor * glint * water * far * 2.2 * surfaceDay(vDir);
+    #endif
     #endif
     #ifndef TERRAIN_AIRLESS
     color = applyHaze(color, vLocalPos, vDir);
@@ -1014,6 +1061,7 @@ export const createTerrainMaterial = (body: ExpeditionBody, gridN: number, quali
             uBedPal: { value: MARS_BEDS.map(color) },
             ...textureNoiseUniforms(),
             ...terrainUniforms(body),
+            ...(usesEarthMap(body) ? { ...CLOUD_SHADOW, ...spaceViewOf(body) } : {}),
         },
     });
 };

@@ -81,6 +81,11 @@ export interface BiomeDef {
      * crescent round Mars). Titan's haze really is hundreds of kilometres deep.
      */
     limb?: number;
+    /**
+     * Seen from above its weather, drawn as real air from orbit (earthSky.ts): Rayleigh's blue limb fading to
+     * black, a warm terminator, a black night side, the clouds settling inside the limb. Earth only so far.
+     */
+    space?: boolean;
     cloudCover: number;
     /** Colour of the glowing crystals that can be mined. */
     crystal: string;
@@ -243,8 +248,10 @@ export interface ExpeditionBody {
      * face on to another (longitude 0 points at it); `noon`: otherwise the
      * longitude (east) the Sun stands over, the world being frozen at one
      * moment of its day, chosen so a place that matters is in daylight.
+     * `clouds`: a photographed map of its cloud cover (same projection as `map`), which its cloud
+     * deck draws instead of invented weather.
      */
-    globe?: { map: string; pole: [number, number]; anchor?: [number, number]; fade: [number, number]; water?: boolean; faces?: string; noon?: number };
+    globe?: { map: string; pole: [number, number]; anchor?: [number, number]; fade: [number, number]; water?: boolean; faces?: string; noon?: number; clouds?: string };
 }
 
 /**
@@ -372,7 +379,7 @@ const earth = makeRocky('projects', R(1), at('earth'), {
     kind: 'verdant', seed: 1201,
     palette: ['#2c6326', '#4f8430', '#86884a', '#66605a', '#7d6656'],
     // Fair-weather cloud, a third of the sky or so (0.55 read as overcast).
-    zenith: '#3b78d0', horizon: '#c4dcf0', haze: 1.0, atmosphereHeight: 1400, cloudCover: 0.36,
+    zenith: '#3b78d0', horizon: '#c4dcf0', haze: 1.0, atmosphereHeight: 1400, cloudCover: 0.36, space: true,
     // From the Moon in a lunar eclipse: every sunrise and sunset at once, red-orange low down
     // (the blue scattered out on the long way through), a thin blue edge on top.
     backlit: { tint: [0.5, 1.0, 2.3], g: 0.6, gain: 2.4 },
@@ -383,7 +390,11 @@ const earth = makeRocky('projects', R(1), at('earth'), {
 });
 // The expedition sets down in North Texas, by Dallas, the portfolio owner's home.
 // Its ground comes from NASA's maps (earth.ts), its colour from the Blue Marble.
-earth.globe = { map: 'textures/expedition/earth-blue-marble.jpg', pole: [0, 90], anchor: [32.78, -96.8], fade: [9000, 26000], water: true };
+// Its clouds are real ones too: a whole day of the world's weather as satellites photographed it.
+earth.globe = {
+    map: 'textures/expedition/earth-blue-marble.jpg', pole: [0, 90], anchor: [32.78, -96.8], fade: [9000, 26000], water: true,
+    clouds: 'textures/expedition/earth-clouds.webp',
+};
 const moon: ExpeditionBody = {
     id: 'moon',
     name: 'Moon',
