@@ -20,6 +20,8 @@
 #include "RewildUI.h"
 #include "RewildWingman.h"
 #include "Widgets/SWeakWidget.h"
+#include "Misc/CommandLine.h"
+#include "HAL/PlatformTime.h"
 
 namespace
 {
@@ -297,10 +299,45 @@ void ARewildHUD::BeginPlay()
 	{
 		ShowMainMenu();
 	}
+	if (FParse::Param(FCommandLine::Get(), TEXT("RewildUIShots")))
+	{
+		// A test of the screens: a shot of what shows first (the main menu, or the game), then the pause menu and
+		// settings, each photographed with the UI, then quit. A core ticker, so it runs while the game is paused.
+		TWeakObjectPtr<ARewildHUD> Self(this);
+		TSharedRef<int32> Step = MakeShared<int32>(0);
+		TSharedRef<double> Next = MakeShared<double>(FPlatformTime::Seconds() + 12.0);
+		UIShots = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateLambda([Self, Step, Next](float)
+		{
+			if (!Self.IsValid() || !Self->PlayerOwner)
+			{
+				return false;
+			}
+			if (FPlatformTime::Seconds() < *Next)
+			{
+				return true;
+			}
+			*Next = FPlatformTime::Seconds() + 2.5;
+			APlayerController* PC = Self->PlayerOwner;
+			const int32 S = (*Step)++;
+			UE_LOG(LogTemp, Display, TEXT("[rewild ui shots] step %d"), S);
+			switch (S)
+			{
+			case 0: case 2: case 4: PC->ConsoleCommand(TEXT("Shot showui")); break;
+			case 1: Self->TogglePause(); break;
+			case 3: Self->ShowSettings(); break;
+			default: PC->ConsoleCommand(TEXT("quit")); return false;
+			}
+			return true;
+		}));
+	}
 }
 
 void ARewildHUD::EndPlay(const EEndPlayReason::Type Reason)
 {
+	if (UIShots.IsValid())
+	{
+		FTSTicker::GetCoreTicker().RemoveTicker(UIShots);
+	}
 	if (OverlayHost.IsValid() && GEngine && GEngine->GameViewport)
 	{
 		GEngine->GameViewport->RemoveViewportWidgetContent(OverlayHost.ToSharedRef());
@@ -358,7 +395,7 @@ void ARewildHUD::Panel(const FText& Title, const FText& Body, const TArray<FRewi
 	Mode.SetWidgetToFocus(Overlay);
 	Mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
 	PlayerOwner->SetInputMode(Mode);
-	Overlay->ShowPanel(Title, Body, Items, bDim);
+	Overlay->ShowPanel(Title, Body, Items, bDim, ARewildGameMode::ModeOf(GetWorld()) == ERewildMode::Menu);
 	Overlay->OnBack = OnBack;
 	if (URewildRadio* Radio = GetWorld()->GetSubsystem<URewildRadio>())
 	{
@@ -402,7 +439,7 @@ void ARewildHUD::ShowMainMenu()
 		const FString Options = Last->Options();
 		const FString Where = Last->Mode == TEXT("Free") ? TEXT("free play")
 			: Last->Checkpoint == 0 ? TEXT("First contact, from the start")
-			: Last->Checkpoint >= 4 ? TEXT("First contact, done: its last wave again")
+			: Last->Checkpoint >= 4 ? TEXT("replay the last wave of First contact")
 			: FString::Printf(TEXT("First contact, wave %d of 3"), Last->Checkpoint);
 		Items.Add({FText::FromString(TEXT("Continue")), [this, Options] { Open(Options); }});
 		Body = FText::FromString(FString::Printf(TEXT("Continue: %s."), *Where));

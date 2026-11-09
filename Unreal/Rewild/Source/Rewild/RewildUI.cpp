@@ -23,8 +23,10 @@ namespace
 	// The glass: a dark, see-through tint over a real blur of the view behind, a hairline of light round the edge.
 	const FSlateRoundedBoxBrush& GlassBrush(float Radius)
 	{
-		static FSlateRoundedBoxBrush Small(FLinearColor(0.03f, 0.04f, 0.055f, 0.40f), 14.f, FLinearColor(1.f, 1.f, 1.f, 0.11f), 1.f);
-		static FSlateRoundedBoxBrush Large(FLinearColor(0.03f, 0.04f, 0.055f, 0.46f), 22.f, FLinearColor(1.f, 1.f, 1.f, 0.12f), 1.f);
+		// Frosted enough to read over a white hull even where the blur is weak (at 0.4 the fighter showed through
+		// the buttons, 9 Nov 2026).
+		static FSlateRoundedBoxBrush Small(FLinearColor(0.03f, 0.04f, 0.055f, 0.62f), 14.f, FLinearColor(1.f, 1.f, 1.f, 0.11f), 1.f);
+		static FSlateRoundedBoxBrush Large(FLinearColor(0.025f, 0.032f, 0.045f, 0.78f), 22.f, FLinearColor(1.f, 1.f, 1.f, 0.12f), 1.f);
 		return Radius > 16.f ? Large : Small;
 	}
 
@@ -72,7 +74,7 @@ FSlateFontInfo SRewildOverlay::Font(float Size)
 TSharedRef<SWidget> SRewildOverlay::Glass(const TSharedRef<SWidget>& Content, float Radius, const FMargin& Padding) const
 {
 	return SNew(SBackgroundBlur)
-		.BlurStrength(14.f)
+		.BlurStrength(24.f)
 		.CornerRadius(FVector4(Radius, Radius, Radius, Radius))
 		.Padding(0.f)
 		[
@@ -110,7 +112,7 @@ void SRewildOverlay::Construct(const FArguments& InArgs)
 			.Visibility_Lambda([this] { return !Objective.IsEmpty() && !bPanel ? EVisibility::HitTestInvisible : EVisibility::Collapsed; })
 			[
 				Glass(SNew(STextBlock)
-					.Font(Font(13.f))
+					.Font(Font(15.f))
 					.ColorAndOpacity(Words)
 					.Text_Lambda([this] { return Objective; }), 14.f, FMargin(18.f, 11.f))
 			]
@@ -124,6 +126,7 @@ void SRewildOverlay::Construct(const FArguments& InArgs)
 		[
 			SNew(SBox)
 			.MaxDesiredWidth(900.f)
+			.MinDesiredWidth(360.f)
 			.Visibility_Lambda([this] { return SubAlpha > 0.01f && !bPanel ? EVisibility::HitTestInvisible : EVisibility::Collapsed; })
 			[
 				SNew(SBorder)
@@ -134,11 +137,12 @@ void SRewildOverlay::Construct(const FArguments& InArgs)
 				Glass(SNew(SVerticalBox)
 					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 0.f, 4.f)
 					[
-						SNew(STextBlock).Font(Font(12.f)).ColorAndOpacity(Amber).Text_Lambda([this] { return SubName; })
+						SNew(STextBlock).Font(Font(14.f)).ColorAndOpacity(Amber).Text_Lambda([this] { return SubName; })
 					]
 					+ SVerticalBox::Slot().AutoHeight()
 					[
-						SNew(STextBlock).Font(Font(16.f)).ColorAndOpacity(Words).AutoWrapText(true).Text_Lambda([this] { return SubWords; })
+						// a fixed wrap width: auto-wrap squeezed the panel into one word a line (9 Nov 2026)
+						SNew(STextBlock).Font(Font(19.f)).ColorAndOpacity(Words).WrapTextAt(840.f).Text_Lambda([this] { return SubWords; })
 					], 14.f, FMargin(22.f, 14.f, 22.f, 16.f))
 				]
 			]
@@ -158,13 +162,14 @@ void SRewildOverlay::Construct(const FArguments& InArgs)
 				.Padding(0.f)
 				.ColorAndOpacity_Lambda([this] { return FLinearColor(1.f, 1.f, 1.f, NoteAlpha); })
 				[
-					Glass(SNew(STextBlock).Font(Font(12.f)).ColorAndOpacity(Words).Text_Lambda([this] { return Note; }), 14.f, FMargin(16.f, 10.f))
+					Glass(SNew(STextBlock).Font(Font(14.f)).ColorAndOpacity(Words).Text_Lambda([this] { return Note; }), 14.f, FMargin(16.f, 10.f))
 				]
 			]
 		]
 
-		// The centred panel: menus and the end of a mission.
+		// The panel: menus and the end of a mission; the main menu sits on the left, clear of the ship.
 		+ SOverlay::Slot()
+		.Expose(PanelSlot)
 		.HAlign(HAlign_Center)
 		.VAlign(VAlign_Center)
 		[
@@ -179,7 +184,7 @@ void SRewildOverlay::Construct(const FArguments& InArgs)
 					]
 					+ SVerticalBox::Slot().AutoHeight().Padding(4.f, 0.f, 4.f, 18.f)
 					[
-						SNew(STextBlock).Font(Font(13.f)).ColorAndOpacity(Soft).AutoWrapText(true)
+						SNew(STextBlock).Font(Font(15.f)).ColorAndOpacity(Soft).WrapTextAt(456.f)
 						.Text_Lambda([this] { return PanelBody; })
 						.Visibility_Lambda([this] { return PanelBody.IsEmpty() ? EVisibility::Collapsed : EVisibility::Visible; })
 					]
@@ -210,8 +215,14 @@ void SRewildOverlay::SetNote(const FText& Text, float Alpha)
 	NoteAlpha = Alpha;
 }
 
-void SRewildOverlay::ShowPanel(const FText& Title, const FText& Body, const TArray<FRewildMenuItem>& Items, bool bDimWorld)
+void SRewildOverlay::ShowPanel(const FText& Title, const FText& Body, const TArray<FRewildMenuItem>& Items, bool bDimWorld, bool bOnLeft)
 {
+	bLeft = bOnLeft;
+	if (PanelSlot)
+	{
+		PanelSlot->SetHorizontalAlignment(bLeft ? HAlign_Left : HAlign_Center);
+		PanelSlot->SetPadding(bLeft ? FMargin(140.f, 0.f, 0.f, 0.f) : FMargin(0.f));
+	}
 	PanelTitle = Title;
 	PanelBody = Body;
 	bDim = bDimWorld;

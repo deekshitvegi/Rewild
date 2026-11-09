@@ -1,8 +1,9 @@
 @echo off
 rem Play Rewild: the first fight, 400 km above Egypt. Needs the D: drive (Unreal 5.8) plugged in and unlocked.
+rem The main menu opens first: Story (the mission First contact), Free play (the Harrow keep coming), Continue.
 rem Mouse to steer, left button guns, right button missile (hold the nose on a target until the ring locks), F flares,
-rem W/S throttle, A/D roll, Shift boost, C chase or cockpit camera, Alt+Enter full screen, Esc quit.
-rem The Harrow's Reapers come after 35 s of practice; add -RewildHarrow to the line below to meet them at once.
+rem W/S throttle, A/D roll, Shift boost, C chase or cockpit camera, 1-4 orders to the wing (attack my target, cover me,
+rem form up, weapons free), Esc pause menu, Alt+Enter full screen. A gamepad works too.
 rem The first start takes about a minute while Unreal loads Earth.
 if not exist "D:\Unreal\UE_5.8\Engine\Binaries\Win64\UnrealEditor.exe" (
     echo Unreal Engine was not found on D:. Plug in the Seagate drive, unlock it, and try again.

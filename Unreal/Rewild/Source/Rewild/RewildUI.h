@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Widgets/SCompoundWidget.h"
+#include "Widgets/SOverlay.h"
 
 class SVerticalBox;
 class SWidget;
@@ -34,7 +35,7 @@ public:
 	/** A short note in the corner, e.g. the order just given (empty to hide). */
 	void SetNote(const FText& Text, float Alpha);
 	/** A centred panel: a title, a line under it, and buttons (no buttons and an empty title to hide). */
-	void ShowPanel(const FText& Title, const FText& Body, const TArray<FRewildMenuItem>& Items, bool bDimWorld);
+	void ShowPanel(const FText& Title, const FText& Body, const TArray<FRewildMenuItem>& Items, bool bDimWorld, bool bOnLeft = false);
 	void HidePanel();
 	bool IsPanelShown() const { return bPanel; }
 	/** Esc / gamepad B while a panel is up does this (e.g. resume); unset to ignore. */
@@ -52,6 +53,8 @@ private:
 	float NoteAlpha = 0.f;
 	bool bPanel = false;
 	bool bDim = false;
+	bool bLeft = false;
+	SOverlay::FOverlaySlot* PanelSlot = nullptr;
 	TSharedPtr<SVerticalBox> Buttons;
 	TSharedPtr<SWidget> FirstButton;
 

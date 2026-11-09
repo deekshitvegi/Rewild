@@ -36,7 +36,9 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Health") float HullMax = 100.f;
 	UPROPERTY(EditAnywhere, Category = "Health") float ShieldRegenDelay = 3.f;  // seconds without a hit
 	UPROPERTY(EditAnywhere, Category = "Health") float ShieldRegenRate = 25.f;  // per second
-	UPROPERTY(EditAnywhere, Category = "Health") int32 Team = 0;                // 0 the player's side, 1 targets and enemies
+	UPROPERTY(EditAnywhere, Category = "Health") int32 Team = 0;
+	/** Testing only (-RewildInvulnerable): hits show but do no harm. */
+	bool bInvulnerable = false;                // 0 the player's side, 1 targets and enemies
 
 	FRewildOnHit OnHit;
 	FRewildOnDeath OnDeath;

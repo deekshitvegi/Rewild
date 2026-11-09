@@ -50,6 +50,11 @@ bool URewildHealthComponent::ApplyDamage(float Amount, const FVector& Point)
 		return false;
 	}
 	SinceHit = 0.f;
+	if (bInvulnerable)
+	{
+		OnHit.Broadcast(Point, Shield > 0.f);
+		return false;
+	}
 	const bool bOnShield = Shield > 0.f;
 	const float Absorbed = FMath::Min(Shield, Amount);
 	Shield -= Absorbed;

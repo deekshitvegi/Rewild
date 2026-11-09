@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/HUD.h"
+#include "Containers/Ticker.h"
 #include "RewildHUD.generated.h"
 
 /**
@@ -37,6 +38,7 @@ private:
 	TSharedPtr<class SRewildOverlay> Overlay;
 	TSharedPtr<class SWidget> OverlayHost;
 	bool bPaused = false;
+	FTSTicker::FDelegateHandle UIShots;  // -RewildUIShots: photographs the menus in turn, then quits
 
 	void UpdateOverlay();
 	void Panel(const FText& Title, const FText& Body, const TArray<struct FRewildMenuItem>& Items, bool bDim, TFunction<void()> OnBack);

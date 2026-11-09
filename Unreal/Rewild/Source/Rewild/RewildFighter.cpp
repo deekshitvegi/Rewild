@@ -189,6 +189,7 @@ void ARewildFighter::BeginPlay()
 	Missiles = MissileCapacity;
 	Flares = FlareCapacity;
 	ApplySettings();
+	Health->bInvulnerable = FParse::Param(FCommandLine::Get(), TEXT("RewildInvulnerable"));  // tests reaching the end
 
 	BuildInput();
 	if (const APlayerController* PC = Cast<APlayerController>(GetController()))
@@ -787,9 +788,24 @@ void ARewildFighter::TickDemo(float Dt)
 		const float Distance = FVector::Dist(Aim, GetActorLocation());
 		const bool bReaper = T->IsA<ARewildReaper>();
 		// Fire only when the aim is off by less than the target's own size (a drone 3.5 m, a Reaper about 11 m).
-		const float Allowed = FMath::Max(0.2f, FMath::RadiansToDegrees(FMath::Atan((bReaper ? 450.f : 150.f) / FMath::Max(Distance, 1.f))));
+		// (drones get a looser gate: at 0.2 deg it never settled on one, 9 Nov 2026)
+		const float Allowed = FMath::Max(bReaper ? 0.2f : 0.6f, FMath::RadiansToDegrees(FMath::Atan((bReaper ? 450.f : 250.f) / FMath::Max(Distance, 1.f))));
 		bFireHeld = Off < Allowed && Distance < 70000.f;  // within 700 m, where the shots show the fight
-		ThrottleInput = Distance < 50000.f ? (Throttle > 0.4f ? -1.f : 0.f) : ThrottleInput;
+		static float LogIn = 0.f;
+		if ((LogIn -= Dt) <= 0.f)
+		{
+			LogIn = 6.f;
+			UE_LOG(LogTemp, Display, TEXT("[rewild demo] target %s at %.0f m, off %.2f deg (allowed %.2f), fire %d, heat %.2f, lead %d"),
+				*T->GetName(), Distance / 100.f, Off, Allowed, bFireHeld ? 1 : 0, GunHeat, bHasLead ? 1 : 0);
+		}
+		// Close slowly (drones hardly move: at Reaper speeds it circled one at 138 m, 2.3 deg off, never firing,
+		// 9 Nov 2026), and pull away to come round again if it ends up too close.
+		const float Slow = bReaper ? 0.4f : 0.22f;
+		ThrottleInput = Distance < (bReaper ? 50000.f : 60000.f) ? (Throttle > Slow ? -1.f : 0.f) : ThrottleInput;
+		if (Distance < 12000.f && Off > Allowed * 3.f)
+		{
+			DemoBreak = 1.6f;
+		}
 		if (bReaper && !bDemoSawClose && Distance < 35000.f)
 		{
 			bDemoSawClose = true;
@@ -856,7 +872,7 @@ void ARewildFighter::TickDemo(float Dt)
 	{
 		DemoEndedAt = DemoTime;
 	}
-	const bool bDone = Mission ? ((DemoEndedAt >= 0.f && DemoTime > DemoEndedAt + 12.f) || DemoTime > 480.f)
+	const bool bDone = Mission ? ((DemoEndedAt >= 0.f && DemoTime > DemoEndedAt + 24.f) || DemoTime > 480.f)
 		: (DemoTime > 90.f || (DemoKills >= 3 && DemoQueue.Num() == 0 && DemoTime > 25.f));
 	if (bDone)
 	{

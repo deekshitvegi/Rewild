@@ -67,7 +67,7 @@ private:
 	};
 	TOptional<FPlaying> Current;
 	TArray<FName> Queue;
-	TMap<FName, TObjectPtr<USoundBase>> Sounds;  // loaded once
+	UPROPERTY() TMap<FName, TObjectPtr<USoundBase>> Sounds;  // loaded once; a UPROPERTY, or garbage collection frees them mid-mission (it crashed, 9 Nov 2026)
 	float Quiet = 10.f;          // seconds since the last line ended
 	float WatchIn = 0.f;
 	TMap<FName, float> Cooldowns;  // per kind of call-out

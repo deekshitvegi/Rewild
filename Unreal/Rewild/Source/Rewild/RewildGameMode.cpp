@@ -5,6 +5,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Misc/CommandLine.h"
 #include "RewildFighter.h"
+#include "RewildDrone.h"
 #include "RewildHUD.h"
 #include "RewildMission.h"
 #include "RewildReaper.h"
@@ -53,10 +54,11 @@ void ARewildGameMode::StartPlay()
 		Wave->SetAuto(Mode == ERewildMode::Free);
 	}
 
-	// The wing: Noor on Dev's right, Kai on his left, Amara out to the right (cm: forward, right, up of Dev).
+	// The wing: Noor ahead on Dev's right, Kai ahead on his left, Amara further out to the right (cm: forward, right,
+	// up of Dev). Ahead, so the chase camera sees them: level with or behind Dev they flew outside its view (9 Nov).
 	if (const APawn* Dev = UGameplayStatics::GetPlayerPawn(this, 0))
 	{
-		const FVector Slots[3] = {FVector(-2500.f, 4500.f, 300.f), FVector(-2500.f, -4500.f, 300.f), FVector(-5000.f, 9000.f, -300.f)};
+		const FVector Slots[3] = {FVector(6000.f, 4500.f, 400.f), FVector(6000.f, -4500.f, 400.f), FVector(11000.f, 9500.f, -500.f)};
 		const FTransform T = Dev->GetActorTransform();
 		for (int32 I = 0; I < 3; ++I)
 		{
@@ -68,6 +70,14 @@ void ARewildGameMode::StartPlay()
 					W->Order(ERewildOrder::FormUp, nullptr);
 				}
 			}
+		}
+	}
+	if (Mode == ERewildMode::Menu)
+	{
+		// behind the menu the wing just flies: no practice drones shooting at Dev
+		for (TActorIterator<ARewildDrone> It(GetWorld()); It; ++It)
+		{
+			It->Destroy();
 		}
 	}
 	if (Mode == ERewildMode::Story)
