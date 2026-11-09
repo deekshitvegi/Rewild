@@ -34,6 +34,13 @@
   2 + 30 log2(1 + d / 80) for water d metres deep. Blue: tree cover 0-255,
   from the Blue Marble's colour (dark, green land).
 
+- `earth-clouds.webp`: Earth's cloud cover, from "Solarsystemscope texture 8k
+  earth clouds.jpg" by Solar System Scope (https://www.solarsystemscope.com),
+  made from NASA imagery, licensed CC BY 4.0
+  (https://creativecommons.org/licenses/by/4.0/); taken from Wikimedia Commons
+  as its 3840 x 1920 rendition and converted to WebP (grey, no other change).
+  Same projection as the Blue Marble above.
+
 ## Mars
 
 - `mars-mdim.webp`: the Mars Digital Image Model 2.1 (Viking orbiter mosaic),

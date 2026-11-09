@@ -10,6 +10,7 @@ import type { ExpeditionRuntime } from './runtime';
 import { groundHeight } from './environment';
 import { cellLife, climateOfBody } from './weather';
 import { usesEarthMap } from './earth';
+import { DECK_SHARE, liftAt } from './earthSky';
 
 /**
  * Which clouds surround the camera: the decks of the gas giant it is in or
@@ -274,9 +275,11 @@ const updateCellScene = (runtime: ExpeditionRuntime, body: ExpeditionBody, scene
     const ground = groundHeight(body, up);
     groundLayers.length = 0;
     if (cover) {
-        const deck = body.biome!.atmosphereHeight * 0.4;
-        cumulusLayer.bottom = deck - 60;
-        cumulusLayer.top = deck + 560;
+        // (Settling towards the ground with the deck as the camera climbs above Earth's weather: earthSky.ts.)
+        const lift = body.biome!.space ? liftAt(eye.length() - body.radius) : 1;
+        const deck = body.biome!.atmosphereHeight * DECK_SHARE * lift;
+        cumulusLayer.bottom = deck - 60 * lift;
+        cumulusLayer.top = deck + 560 * lift;
         groundLayers.push(cumulusLayer);
         scene.cover = cover.texture;
         scene.coverFrame.copy(cover.frame);

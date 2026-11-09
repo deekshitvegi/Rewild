@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { NOISE_GLSL } from './noise';
 import { BLACK_HOLE, WORMHOLES, farness } from './deepSpace';
 import type { ExpeditionRuntime } from './runtime';
+import { sunlitShare } from './exposure';
 
 /**
  * Deep space behind everything: a purple and blue nebula, a faint galactic
@@ -295,7 +296,7 @@ export const SpaceBackdrop = ({ runtime }: { runtime: ExpeditionRuntime }) => {
         stars.geometry.dispose(); stars.material.dispose();
     }, [nebula, stars]);
 
-    useFrame(() => {
+    useFrame(({ camera }) => {
         // The sky turns as the game's frame follows the world the player is at (motion.ts).
         SKY.value.setFromMatrix4(skyMatrix.makeRotationFromQuaternion(runtime.motion.M));
         // A daytime sky hides the faint nebula and most stars. Under a night
@@ -304,8 +305,11 @@ export const SpaceBackdrop = ({ runtime }: { runtime: ExpeditionRuntime }) => {
         // On airless ground in sunlight the eye is set for the bright ground:
         // a black sky, the brighter stars only, no nebula to speak of.
         const sunlitGround = (1 - runtime.atmosphere) * runtime.daylight * runtime.nearGround;
-        const fade = (1 - runtime.atmosphere * runtime.daylight * 0.85) * (1 - sunlitGround * 0.55);
-        const nebulaFade = fade * (1 - runtime.atmosphere * (1 - runtime.daylight) * 0.75) * (1 - sunlitGround * 0.7);
+        // A sunlit world filling a few hundredths of the view sets the eye for daylight too (exposure.ts):
+        // black space behind it, the brightest stars only.
+        const glare = THREE.MathUtils.smoothstep(sunlitShare(runtime, camera), 0.002, 0.03);
+        const fade = (1 - runtime.atmosphere * runtime.daylight * 0.85) * (1 - sunlitGround * 0.55) * (1 - glare * 0.75);
+        const nebulaFade = fade * (1 - runtime.atmosphere * (1 - runtime.daylight) * 0.75) * (1 - sunlitGround * 0.7) * (1 - glare * 0.92);
         nebula.material.uniforms.uFade.value = nebulaFade;
         nebula.bakedMaterial.uniforms.uFade.value = nebulaFade;
         stars.material.uniforms.uFade.value = fade;

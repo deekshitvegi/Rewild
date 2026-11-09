@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { revivalUniform } from './revival';
 import type { ExpeditionBody } from './bodies';
 import { WEATHER_UNIFORMS } from './weather';
+import { spaceViewOf } from './earthSky';
 
 /**
  * The eye under water, shared by every material that hazes with distance: the water's colour
@@ -45,6 +46,11 @@ uniform float uStorm;
 uniform vec4 uUnderwater;
 uniform float uDust;
 uniform float uFlash;
+// Earth from above its weather (earthSky.ts): the air seen from orbit takes over from this haze (0 elsewhere).
+uniform float uSpaceShare;
+// The share of the sun's direct light a surface gets here: less in a cloud's shadow (Earth's ground sets it from
+// cloudShadow.ts before it is lit; 1 everywhere else).
+float gSunShade = 1.0;
 
 // The explorer's torch, or the ship's lamps: a cone of warm white light from
 // uTorchPos along uTorchDir (both in the planet's frame), with a little spill
@@ -111,7 +117,7 @@ float surfaceDay(vec3 up) {
 vec3 surfaceLightWrap(vec3 albedo, vec3 N, vec3 up, float wrap) {
     float sunUp = dot(up, uSunDir);
     float day = surfaceDay(up);
-    float direct = max((dot(N, uSunDir) + wrap) / (1.0 + wrap), 0.0) * smoothstep(-0.05, 0.1, sunUp);
+    float direct = max((dot(N, uSunDir) + wrap) / (1.0 + wrap), 0.0) * smoothstep(-0.05, 0.1, sunUp) * gSunShade;
     vec3 skyAmbient = mix(uHorizon, uZenith, 0.55);
     float hemi = 0.55 + 0.45 * dot(N, up);
     // Under a deck of cloud (Venus) most of the light comes from the whole sky,
@@ -124,7 +130,7 @@ vec3 surfaceLightWrap(vec3 albedo, vec3 N, vec3 up, float wrap) {
     skyAmbient = mix(skyAmbient, vec3(0.42, 0.27, 0.15), uDust * 0.5);
     // Light off the sunlit ground round about: as much as the ground's albedo,
     // over the half of the sky below a surface's horizon.
-    float bounce = max(sunUp, 0.0) * (0.5 - 0.5 * dot(N, up)) * (1.0 - 0.8 * uOvercast) * (1.0 - 0.82 * uStorm);
+    float bounce = max(sunUp, 0.0) * (0.5 - 0.5 * dot(N, up)) * (1.0 - 0.8 * uOvercast) * (1.0 - 0.82 * uStorm) * gSunShade;
     vec3 light = uSunColor * direct * 1.45 + skyAmbient * hemi * (0.06 + 0.3 * day) * (1.0 + 2.4 * uOvercast) + vec3(0.012, 0.014, 0.022)
         + uSunColor * uBounce * bounce * 1.45;
     // A flash of lightning lights everything for an instant, from above.
@@ -166,6 +172,8 @@ vec3 applyHaze(vec3 color, vec3 localPos, vec3 up) {
     // Rain thickens the air; a dust storm closes it to a few hundred metres.
     float thick = 1.0 + uStorm * 2.2 + uDust * 9.5;
     float haze = 1.0 - exp(-airDepth(uCamLocal, localPos) * 0.9 * uHaze * uAerial * thick);
+    // (From orbit Earth's air is drawn over the ground as real air, Atmosphere.tsx: not twice.)
+    haze *= 1.0 - uSpaceShare;
     vec3 viewDir = normalize(localPos - uCamLocal);
     // Looking down through the air it is sky-blue, along the ground it is the
     // pale horizon colour.
@@ -305,5 +313,6 @@ export const createSurfaceUniforms = (body: ExpeditionBody) => {
         uUnderwater: UNDERWATER,
         uDust: WEATHER_UNIFORMS.dust,
         uFlash: WEATHER_UNIFORMS.flash,
+        uSpaceShare: biome?.space ? spaceViewOf(body).uSpaceShare : { value: 0 },
     };
 };

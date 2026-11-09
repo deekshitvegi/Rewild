@@ -17,6 +17,8 @@ import { trackLoad } from './loadProgress';
 import { directionToBody, placeBodyGroup } from './motion';
 import { skyScale } from './skyScale';
 import { REVIVAL_GLSL } from './revival';
+import { CLOUD_SHADOW, CLOUD_SHADOW_GLSL } from './cloudShadow';
+import { SPACE_AIR_GLSL, spaceViewOf } from './earthSky';
 
 // Height bands (low->mid, mid->high, blend width), steepness (rock below
 // slope.x, grass above slope.y) and how strongly cliffs show strata.
@@ -302,6 +304,8 @@ uniform float uTime;
 #ifdef TERRAIN_EARTH
 ${WIND_GLSL}
 ${WIND_GUST_GLSL}
+${CLOUD_SHADOW_GLSL}
+${SPACE_AIR_GLSL}
 #endif
 #ifdef TERRAIN_WATER
 // The liquid: its colour deep and shallow, the tint of the bed seen through
@@ -657,7 +661,7 @@ vec3 waterColor(vec3 bottom, vec2 water, vec3 up, vec3 pos, float footprint) {
     #endif
     float sunUp = smoothstep(-0.02, 0.08, dot(up, uSunDir));
     float spec = pow(max(dot(R, uSunDir), 0.0), 420.0) * 6.0 * sunUp;
-    vec3 color = mix(lit, sky, fresnel) + uSunColor * spec + uSunColor * waterGlint(N, V, up, pos, footprint, speed > 0.03 ? vFlowDir(speed) : vec3(0.0), speed) * sunUp;
+    vec3 color = mix(lit, sky, fresnel) + (uSunColor * spec + uSunColor * waterGlint(N, V, up, pos, footprint, speed > 0.03 ? vFlowDir(speed) : vec3(0.0), speed) * sunUp) * gSunShade;
     #if defined(TERRAIN_EARTH) || defined(TERRAIN_STREAMS)
     // Where a river runs fast over the shallows by its banks, white water in streaks along it.
     #ifdef TERRAIN_WATER_DETAIL
@@ -826,6 +830,10 @@ void main() {
         #endif
     }
     #endif
+    #ifdef TERRAIN_EARTH
+    // Under the clouds' shadows (cloudShadow.ts): they move with the clouds that cast them.
+    gSunShade = cloudShade(vLocalPos);
+    #endif
     vec3 color = surfaceLight(albedo, Nlit, vDir) + playerLights(albedo, Nlit, vLocalPos);
     #ifdef TERRAIN_WATER
     float wet = wetHere;
@@ -845,9 +853,30 @@ void main() {
     #else
     color = mix(color, surfaceLight(globe, N, vDir), far);
     #endif
+    #ifdef TERRAIN_EARTH
+    // From orbit (earthSky.ts) the sunlight on the ground has come down through the air: white at noon, warm
+    // and fading at the terminator, none past it.
+    if (uSpaceShare > 0.0 && far > 0.0) {
+        vec3 sunAir = spaceSunlight(uRadius, vDir) / exp(-spaceDepth(uRadius, 1.0));
+        color *= mix(vec3(1.0), sunAir, uSpaceShare * far);
+    }
+    #endif
     vec3 toEye = normalize(uCamLocal - vLocalPos);
+    #ifdef TERRAIN_EARTH
+    // The sun's glint off the sea as photographed from orbit: not a point but a broad soft patch, the sea's
+    // waves tilting a little of it towards the eye over ten degrees or more (Cox and Munk's wave slopes,
+    // a Beckmann spread of 0.045), brightest seen at a slant (Fresnel). Not under cloud.
+    vec3 Hglint = normalize(toEye + uSunDir);
+    float nh = max(dot(vDir, Hglint), 1e-3);
+    float nh2 = nh * nh;
+    float spread = exp(-(1.0 - nh2) / (nh2 * 0.045)) / (3.14159 * 0.045 * nh2 * nh2);
+    float fresnelGlint = 0.02 + 0.98 * pow(1.0 - max(dot(toEye, Hglint), 0.0), 5.0);
+    float glint = min(fresnelGlint * spread * 0.25 / max(dot(vDir, toEye), 0.12), 1.6) * 1.45 * 3.14159;
+    color += uSunColor * glint * water * far * smoothstep(-0.02, 0.1, dot(vDir, uSunDir)) * gSunShade;
+    #else
     float glint = pow(max(dot(vDir, normalize(toEye + uSunDir)), 0.0), 160.0);
     color += uSunColor * glint * water * far * 2.2 * surfaceDay(vDir);
+    #endif
     #endif
     #ifndef TERRAIN_AIRLESS
     color = applyHaze(color, vLocalPos, vDir);
@@ -1014,6 +1043,7 @@ export const createTerrainMaterial = (body: ExpeditionBody, gridN: number, quali
             uBedPal: { value: MARS_BEDS.map(color) },
             ...textureNoiseUniforms(),
             ...terrainUniforms(body),
+            ...(usesEarthMap(body) ? { ...CLOUD_SHADOW, ...spaceViewOf(body) } : {}),
         },
     });
 };
